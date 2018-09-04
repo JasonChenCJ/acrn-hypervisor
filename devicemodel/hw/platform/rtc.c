@@ -685,12 +685,17 @@ vrtc_periodic_timer(void *arg)
 	pthread_mutex_unlock(&vrtc->mtx);
 }
 
+static int inited = false;
+
 static void
 vrtc_update_timer(void *arg)
 {
 	struct vrtc *vrtc = arg;
 	time_t basetime;
 	time_t curtime;
+
+	if (!inited)
+		return;
 
 	pthread_mutex_lock(&vrtc->mtx);
 	if (aintr_enabled(vrtc) || uintr_enabled(vrtc)) {
@@ -1100,6 +1105,8 @@ vrtc_enable_localtime(int l_time)
 	local_time = l_time;
 }
 
+
+
 int
 vrtc_init(struct vmctx *ctx)
 {
@@ -1162,6 +1169,8 @@ vrtc_init(struct vmctx *ctx)
 	secs_to_rtc(curtime, vrtc, 0);
 	pthread_mutex_unlock(&vrtc->mtx);
 
+	inited = 1;
+
 	return 0;
 }
 
@@ -1186,4 +1195,6 @@ vrtc_deinit(struct vmctx *ctx)
 	vrtc_delete_timer(vrtc->update_timer_id);
 	free(vrtc);
 	ctx->vrtc = NULL;
+
+	inited = 0;
 }

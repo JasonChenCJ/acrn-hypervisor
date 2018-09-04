@@ -229,8 +229,8 @@ void free_irq(uint32_t irq)
 	dev_dbg(ACRN_DBG_IRQ, "[%s] irq%d vr:0x%x",
 		__func__, irq, irq_to_vector(irq));
 
-	free_irq_vector(irq);
 	free_irq_num(irq);
+	free_irq_vector(irq);
 
 	spinlock_irqsave_obtain(&desc->lock, &rflags);
 	desc->action = NULL;

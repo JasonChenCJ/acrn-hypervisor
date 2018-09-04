@@ -132,6 +132,9 @@ ptdev_activate_entry(struct ptdev_remapping_info *entry, uint32_t phys_irq)
 	retval = request_irq(phys_irq, ptdev_interrupt_handler,
 		             (void *)entry, IRQF_PT);
 
+	if (retval < 0)
+		pr_err("ptdev request irq failed: inter_type %d, phys_sid 0x%x, virt_sid 0x%x\n",
+			entry->intr_type, entry->phys_sid, entry->virt_sid);
 	ASSERT(retval >= 0, "dev register failed");
 	entry->allocated_pirq = (uint32_t)retval;
 
