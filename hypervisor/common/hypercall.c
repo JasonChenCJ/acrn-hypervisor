@@ -472,6 +472,9 @@ static int32_t local_set_vm_memory_region(struct vm *vm,
 		return ept_mr_add(target_vm, pml4_page, hpa,
 				region->gpa, region->size, prot);
 	} else {
+		if (is_vm0(target_vm))
+			pr_err("##### %s: remove vm0 ept mapping 0x%llx, size 0x%llx\n",
+				__func__, region->gpa, region->size);
 		return ept_mr_del(target_vm, pml4_page,
 				region->gpa, region->size);
 	}

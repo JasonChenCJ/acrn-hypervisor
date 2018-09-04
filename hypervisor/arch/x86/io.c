@@ -316,6 +316,9 @@ emulate_io(struct vcpu *vcpu, struct io_request *io_req)
 			pr_fatal("Err:IO %s access to port 0x%04lx, size=%lu",
 				(pio_req->direction != REQUEST_READ) ? "read" : "write",
 				pio_req->address, pio_req->size);
+			pr_fatal("vcpu pcpu_id %d\n", vcpu->pcpu_id);
+			pr_fatal("gpa2hpa 0x%llx -> 0x%llx\n", pio_req->address,
+				gpa2hpa(vcpu->vm, pio_req->address));
 		} else {
 			status = IOREQ_PENDING;
 		}

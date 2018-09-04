@@ -196,6 +196,9 @@ static int vdev_pt_remap_bar(struct pci_vdev *vdev, uint32_t idx,
 	struct vm *vm = vdev->vpci->vm;
 
 	if (vdev->bar[idx].base != 0UL) {
+		if (is_vm0(vm))
+			pr_err("##### %s: remove vm0 ept mapping 0x%llx, size 0x%llx\n",
+				__func__, vdev->bar[idx].base, vdev->bar[idx].size);
 		error = ept_mr_del(vm, (uint64_t *)vm->arch_vm.nworld_eptp,
 			vdev->bar[idx].base,
 			vdev->bar[idx].size);
