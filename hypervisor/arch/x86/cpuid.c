@@ -328,6 +328,7 @@ void guest_cpuid(struct vcpu *vcpu,
 	{
 		cpuid(leaf, eax, ebx, ecx, edx);
 		uint32_t apicid = vlapic_get_id(vcpu_vlapic(vcpu));
+		uint64_t msr;
 		/* Patching initial APIC ID */
 		*ebx &= ~APIC_ID_MASK;
 		*ebx |= (apicid & APIC_ID_MASK);
@@ -364,6 +365,13 @@ void guest_cpuid(struct vcpu *vcpu,
 				*ecx |= CPUID_ECX_OSXSAVE;
 			}
 		}
+
+		vlapic_rdmsr(vcpu, MSR_IA32_APIC_BASE, &msr);
+		if ((msr & (1 << 11UL)) == 0)
+			*edx &= ~CPUID_EDX_APIC;
+		else
+			*edx |= CPUID_EDX_APIC;
+
 		break;
 	}
 

@@ -103,7 +103,7 @@ acrn_parse_elf(char *arg)
 
 		elf_file_name = elf_path;
 
-		printf("SW_LOAD: get elf path %s\n", elf_path);
+		printf("SW_LOAD###: get elf path %s\n", elf_path);
 		return 0;
 	} else
 		return -1;
@@ -292,6 +292,8 @@ acrn_sw_load_elf(struct vmctx *ctx)
 
 	ctx->bsp_regs.vcpu_regs.rip = entry;
 	ctx->bsp_regs.vcpu_regs.gprs.rax = MULTIBOOT_MACHINE_STATE_MAGIC;
+
+	printf("%s %d", __func__, __LINE__);
 
 	if (multiboot_image == 1) {
 		mi = (struct multiboot_info *)ctx->baseaddr + MULTIBOOT_OFFSET;

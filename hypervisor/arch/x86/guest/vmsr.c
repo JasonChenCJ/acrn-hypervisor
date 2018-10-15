@@ -14,6 +14,7 @@ static const uint32_t emulated_msrs[] = {
 	MSR_IA32_BIOS_SIGN_ID, /* Enable MSR_IA32_BIOS_SIGN_ID */
 	MSR_IA32_TIME_STAMP_COUNTER,
 	MSR_IA32_PAT,
+ 	MSR_IA32_APIC_BASE,
 
 /* following MSR not emulated now */
 /*

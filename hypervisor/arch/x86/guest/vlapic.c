@@ -1499,6 +1499,9 @@ vlapic_write(struct acrn_vlapic *vlapic, uint32_t offset,
 	uint32_t data32 = (uint32_t)data;
 	int retval;
 
+	if (!(((offset & 0xfU) == 0U) && (offset < CPU_PAGE_SIZE)))
+		pr_err("vlapic write offset %#x, data %#lx",
+				offset, data);
 	ASSERT(((offset & 0xfU) == 0U) && (offset < CPU_PAGE_SIZE),
 		"%s: invalid offset %#x", __func__, offset);
 
@@ -1680,16 +1683,24 @@ vlapic_get_apicbase(struct acrn_vlapic *vlapic)
 	return vlapic->msr_apicbase;
 }
 
+extern bool x2apic_enabled;
 static int
 vlapic_set_apicbase(struct acrn_vlapic *vlapic, uint64_t new)
 {
 
-	if (vlapic->msr_apicbase != new) {
+	if ((vlapic->msr_apicbase & ~0xfffUL) != (new & ~0xfffUL)) {
 		dev_dbg(ACRN_DBG_LAPIC,
 			"NOT support to change APIC_BASE MSR from %#lx to %#lx",
 			vlapic->msr_apicbase, new);
 		return (-1);
 	}
+
+	if ((new & APICBASE_X2APIC) && (x2apic_enabled == false)) {
+		new &= ~APICBASE_X2APIC;
+		vcpu_inject_gp(vlapic->vcpu, 0U);
+	}
+
+	vlapic->msr_apicbase = new;
 
 	return 0;
 }
@@ -1953,6 +1964,10 @@ vlapic_rdmsr(struct vcpu *vcpu, uint32_t msr, uint64_t *rval)
 	switch (msr) {
 	case MSR_IA32_APIC_BASE:
 		*rval = vlapic_get_apicbase(vlapic);
+
+	if (!is_vm0(vcpu->vm))
+		pr_err("cpu[%hu] rdmsr: %x val = 0x%llx", vcpu->vcpu_id, msr, *rval);
+
 		break;
 
 	case MSR_IA32_TSC_DEADLINE:
@@ -1978,6 +1993,10 @@ vlapic_wrmsr(struct vcpu *vcpu, uint32_t msr, uint64_t wval)
 
 	switch (msr) {
 	case MSR_IA32_APIC_BASE:
+
+	if (!is_vm0(vcpu->vm))
+		pr_err("cpu[%hu] wrmsr: %x, val = 0x%llx", vcpu->vcpu_id, msr, wval);
+
 		error = vlapic_set_apicbase(vlapic, wval);
 		break;
 

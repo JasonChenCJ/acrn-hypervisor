@@ -285,6 +285,8 @@ static int vcpu_inject_lo_exception(struct vcpu *vcpu)
 	/* high priority exception already be injected */
 	if (vector <= NR_MAX_VECTOR) {
 		vcpu_inject_exception(vcpu, vector);
+		if (vector == IDT_GP)
+			pr_err("#GP injected");
 		return 1;
 	}
 

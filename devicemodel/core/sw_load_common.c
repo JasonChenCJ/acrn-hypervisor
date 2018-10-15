@@ -220,6 +220,7 @@ acrn_create_e820_table(struct vmctx *ctx, struct e820_entry *e820)
 int
 acrn_sw_load(struct vmctx *ctx)
 {
+	printf("%s %d vsbl_file_name %s, kernel_file_name %s", __func__, __LINE__, vsbl_file_name, kernel_file_name);
 	if (vsbl_file_name)
 		return acrn_sw_load_vsbl(ctx);
 	else if (kernel_file_name)

@@ -556,6 +556,7 @@ int vioapic_mmio_access_handler(struct vcpu *vcpu, struct io_request *io_req)
 		}
 	} else {
 		pr_err("All RW to IOAPIC must be 32-bits in size");
+		pr_err("guest rip 0x%llx", vcpu_get_rip(vcpu));
 		ret = -EINVAL;
 	}
 
