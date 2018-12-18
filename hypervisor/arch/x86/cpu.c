@@ -115,13 +115,18 @@ void init_cpu_pre(uint16_t pcpu_id)
 
 	/* Set state for this CPU to initializing */
 	cpu_set_current_state(pcpu_id, PCPU_STATE_INITIALIZING);
+
+#ifdef STACK_PROTECTOR
+	/*
+	 * Note: only function after set_fs_base can use stack, otherwise stack
+	 * protector will assert
+	 */
+	set_fs_base();
+#endif
 }
 
 void init_cpu_post(uint16_t pcpu_id)
 {
-#ifdef STACK_PROTECTOR
-	set_fs_base();
-#endif
 	load_gdtr_and_tr();
 
 	enable_smep();
