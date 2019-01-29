@@ -136,7 +136,7 @@ int32_t general_sw_loader(struct acrn_vm *vm)
 #ifdef CONFIG_REMAIN_1G_PAGES
 			reserving_1g_pages = (p_e820_mem_info->total_mem_size >> 30U) - CONFIG_REMAIN_1G_PAGES;
 #else
-			reserving_1g_pages = (p_e820_mem_info->total_mem_size >> 30U) - 3;
+			reserving_1g_pages = (p_e820_mem_info->total_mem_size >> 30U) - 4;
 #endif
 			if (reserving_1g_pages > 0) {
 				snprintf(dyn_bootargs, 100U, " hugepagesz=1G hugepages=%d", reserving_1g_pages);
