@@ -42,7 +42,7 @@ void vcpu_thread(struct sched_object *obj)
 			continue;
 		}
 
-		if (need_reschedule(vcpu->pcpu_id)) {
+		if (need_reschedule(pcpuid_from_vcpu(vcpu))) {
 			schedule();
 			continue;
 		}

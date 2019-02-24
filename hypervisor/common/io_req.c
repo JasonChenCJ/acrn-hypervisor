@@ -92,6 +92,7 @@ static inline bool has_complete_ioreq(const struct acrn_vcpu *vcpu)
 int32_t acrn_insert_request(struct acrn_vcpu *vcpu, const struct io_request *io_req)
 {
 	union vhm_request_buffer *req_buf = NULL;
+	uint16_t pcpu_id = pcpuid_from_vcpu(vcpu);
 	struct vhm_request *vhm_req;
 	bool is_polling = false;
 	int32_t ret = 0;
@@ -147,14 +148,14 @@ int32_t acrn_insert_request(struct acrn_vcpu *vcpu, const struct io_request *io_
 			 * In this case, we cannot come back to polling status again. Currently,
 			 * it's OK as we needn't handle IO completion in zombie status.
 			 */
-			while (!need_reschedule(vcpu->pcpu_id)) {
+			while (!need_reschedule(pcpu_id)) {
 				if (has_complete_ioreq(vcpu)) {
 					/* we have completed ioreq pending */
 					break;
 				}
 				asm_pause();
 			}
-		} else if (need_reschedule(vcpu->pcpu_id)) {
+		} else if (need_reschedule(pcpu_id)) {
 			schedule();
 		} else {
 			ret = -EINVAL;

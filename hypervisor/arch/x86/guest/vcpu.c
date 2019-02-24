@@ -535,9 +535,11 @@ int32_t shutdown_vcpu(__unused struct acrn_vcpu *vcpu)
  */
 void offline_vcpu(struct acrn_vcpu *vcpu)
 {
+	uint16_t pcpu_id = pcpuid_from_vcpu(vcpu);
+
 	vlapic_free(vcpu);
-	if (per_cpu(ever_run_vcpu, vcpu->pcpu_id) == vcpu)
-		per_cpu(ever_run_vcpu, vcpu->pcpu_id) = NULL;
+	if (per_cpu(ever_run_vcpu, pcpu_id) == vcpu)
+		per_cpu(ever_run_vcpu, pcpu_id) = NULL;
 	free_task(&vcpu->sched_obj.task_rc);
 	vcpu->state = VCPU_OFFLINE;
 }
@@ -583,48 +585,49 @@ void reset_vcpu(struct acrn_vcpu *vcpu)
 
 void pause_vcpu(struct acrn_vcpu *vcpu, enum vcpu_state new_state)
 {
-	uint16_t pcpu_id = get_cpu_id();
+	uint16_t pcpu_id = pcpuid_from_vcpu(vcpu);
 
-	pr_dbg("vcpu%hu paused, new state: %d",
-		vcpu->vcpu_id, new_state);
+	pr_dbg("vcpu%hu paused, new state: %d", vcpu->vcpu_id, new_state);
 
-	get_schedule_lock(vcpu->pcpu_id);
+	get_schedule_lock(pcpu_id);
 	vcpu->prev_state = vcpu->state;
 	vcpu->state = new_state;
 
 	if (atomic_load32(&vcpu->running) == 1U) {
-		remove_from_cpu_runqueue(&vcpu->sched_obj, vcpu->pcpu_id);
+		remove_from_cpu_runqueue(&vcpu->sched_obj, pcpu_id);
 
 		if (is_lapic_pt(vcpu->vm)) {
-			make_reschedule_request(vcpu->pcpu_id, DEL_MODE_INIT);
+			make_reschedule_request(pcpu_id, DEL_MODE_INIT);
 		} else {
-			make_reschedule_request(vcpu->pcpu_id, DEL_MODE_IPI);
+			make_reschedule_request(pcpu_id, DEL_MODE_IPI);
 		}
 
-		release_schedule_lock(vcpu->pcpu_id);
+		release_schedule_lock(pcpu_id);
 
-		if (vcpu->pcpu_id != pcpu_id) {
+		if (pcpu_id != get_cpu_id()) {
 			while (atomic_load32(&vcpu->running) == 1U)
 				asm_pause();
 		}
 	} else {
-		remove_from_cpu_runqueue(&vcpu->sched_obj, vcpu->pcpu_id);
-		release_schedule_lock(vcpu->pcpu_id);
+		remove_from_cpu_runqueue(&vcpu->sched_obj, pcpu_id);
+		release_schedule_lock(pcpu_id);
 	}
 }
 
 void resume_vcpu(struct acrn_vcpu *vcpu)
 {
+	uint16_t pcpu_id = pcpuid_from_vcpu(vcpu);
+
 	pr_dbg("vcpu%hu resumed", vcpu->vcpu_id);
 
-	get_schedule_lock(vcpu->pcpu_id);
+	get_schedule_lock(pcpu_id);
 	vcpu->state = vcpu->prev_state;
 
 	if (vcpu->state == VCPU_RUNNING) {
-		add_to_cpu_runqueue(&vcpu->sched_obj, vcpu->pcpu_id);
-		make_reschedule_request(vcpu->pcpu_id, DEL_MODE_IPI);
+		add_to_cpu_runqueue(&vcpu->sched_obj, pcpu_id);
+		make_reschedule_request(pcpu_id, DEL_MODE_IPI);
 	}
-	release_schedule_lock(vcpu->pcpu_id);
+	release_schedule_lock(pcpu_id);
 }
 
 static void context_switch_out(struct sched_object *prev)
@@ -648,7 +651,7 @@ static void context_switch_in(struct sched_object *next)
 
 	atomic_store32(&vcpu->running, 1U);
 
-	per_cpu(ever_run_vcpu, vcpu->pcpu_id) = vcpu;
+	per_cpu(ever_run_vcpu, pcpuid_from_vcpu(vcpu)) = vcpu;
 
 	/* FIXME:
 	 * Now, we don't need to load new vcpu VMCS because
@@ -660,13 +663,15 @@ static void context_switch_in(struct sched_object *next)
 
 void schedule_vcpu(struct acrn_vcpu *vcpu)
 {
+	uint16_t pcpu_id = pcpuid_from_vcpu(vcpu);
+
 	vcpu->state = VCPU_RUNNING;
 	pr_dbg("vcpu%hu scheduled", vcpu->vcpu_id);
 
-	get_schedule_lock(vcpu->pcpu_id);
-	add_to_cpu_runqueue(&vcpu->sched_obj, vcpu->pcpu_id);
-	make_reschedule_request(vcpu->pcpu_id, DEL_MODE_IPI);
-	release_schedule_lock(vcpu->pcpu_id);
+	get_schedule_lock(pcpu_id);
+	add_to_cpu_runqueue(&vcpu->sched_obj, pcpu_id);
+	make_reschedule_request(pcpu_id, DEL_MODE_IPI);
+	release_schedule_lock(pcpu_id);
 }
 
 static uint64_t build_stack_frame(struct acrn_vcpu *vcpu)
@@ -747,7 +752,7 @@ uint64_t vcpumask2pcpumask(struct acrn_vm *vm, uint64_t vdmask)
 	for (vcpu_id = 0U; vcpu_id < vm->hw.created_vcpus; vcpu_id++) {
 		if ((vdmask & (1UL << vcpu_id)) != 0UL) {
 			vcpu = vcpu_from_vid(vm, vcpu_id);
-			bitmap_set_nolock(vcpu->pcpu_id, &dmask);
+			bitmap_set_nolock(pcpuid_from_vcpu(vcpu), &dmask);
 		}
 	}
 
