@@ -12,8 +12,13 @@
 #include <lapic.h>
 #include <schedule.h>
 #include <sprintf.h>
+#include <errno.h>
 
-static uint64_t pcpu_used_bitmap;
+#define CONFIG_TASK_PER_PCPU 3
+
+static uint64_t pcpu_used_bitmap[CONFIG_TASK_PER_PCPU];
+
+static spinlock_t task_lock = { .head = 0U, .tail = 0U };
 
 void init_scheduler(void)
 {
@@ -44,30 +49,112 @@ void release_schedule_lock(uint16_t pcpu_id)
 	spinlock_release(&ctx->scheduler_lock);
 }
 
-uint16_t allocate_pcpu(void)
+static void pin_task(uint16_t pcpu_id, uint16_t task_id)
 {
-	uint16_t i;
-	uint16_t ret = INVALID_CPU_ID;
-	uint16_t pcpu_nums = get_pcpu_nums();
+	if (task_id < CONFIG_TASK_PER_PCPU) {
+		bitmap_set_nolock(pcpu_id, &pcpu_used_bitmap[task_id]);
+	} else {
+		uint16_t i;
 
-	for (i = 0U; i < pcpu_nums; i++) {
-		if (bitmap_test_and_set_lock(i, &pcpu_used_bitmap) == 0) {
-			ret = i;
-			break;
+		for (i = 0U; i < CONFIG_TASK_PER_PCPU; i++) {
+			bitmap_set_nolock(pcpu_id, &pcpu_used_bitmap[i]);
+		}
+	}
+}
+
+
+/**
+ * @pre task_rc != NULL
+ */
+int32_t allocate_task(struct sched_task_rc *task_rc)
+{
+	uint16_t pcpu_id = task_rc->pcpu_id;
+	uint16_t task_id = task_rc->task_id;
+	uint16_t i, pcpu_nums = get_pcpu_nums();
+	int ret = 0;
+
+	spinlock_obtain(&task_lock);
+	if ((pcpu_id < pcpu_nums) && (task_id < CONFIG_TASK_PER_PCPU)) {
+		if (bitmap_test(pcpu_id, &pcpu_used_bitmap[task_id]) != 0) {
+			ret = -ENODEV;
+		}
+	} else if ((pcpu_id < pcpu_nums) && (task_id == TASK_ID_MONOPOLY)) {
+		for (i = 0U; i < CONFIG_TASK_PER_PCPU; i++) {
+			if (bitmap_test(pcpu_id, &pcpu_used_bitmap[i]) != 0) {
+				ret = -ENODEV;
+				break;
+			}
+		}
+	} else if (pcpu_id < pcpu_nums) {
+		for (task_id = 0U; task_id < CONFIG_TASK_PER_PCPU; task_id++) {
+			if (bitmap_test(pcpu_id, &pcpu_used_bitmap[task_id]) == 0) {
+				break;
+			}
+		}
+		if (task_id == CONFIG_TASK_PER_PCPU) {
+			ret = -ENODEV;
+		}
+	} else if (task_id == TASK_ID_MONOPOLY) {
+		for (pcpu_id = 0U; pcpu_id < pcpu_nums; pcpu_id++) {
+			for (i = 0U; i < CONFIG_TASK_PER_PCPU; i++) {
+				if (bitmap_test(pcpu_id, &pcpu_used_bitmap[i]) != 0) {
+					break;
+				}
+			}
+			if (i == CONFIG_TASK_PER_PCPU) {
+				break;
+			}
+		}
+		if (pcpu_id == pcpu_nums) {
+			ret = -ENODEV;
+		}
+	} else {
+		for (task_id = 0U; task_id < CONFIG_TASK_PER_PCPU; task_id++) {
+			for (pcpu_id = 0U; pcpu_id < pcpu_nums; pcpu_id++) {
+				if (bitmap_test(pcpu_id, &pcpu_used_bitmap[task_id]) == 0) {
+					break;
+				}
+			}
+			if (pcpu_id < pcpu_nums) {
+				break;
+			}
+		}
+		if (task_id == CONFIG_TASK_PER_PCPU) {
+			ret = -ENODEV;
 		}
 	}
 
+	if (ret == 0) {
+		pin_task(pcpu_id, task_id);
+		task_rc->pcpu_id = pcpu_id;
+		task_rc->task_id = task_id;
+		pr_err("%s: pcpu_id %d, task_id 0x%x\n", __func__, pcpu_id, task_id);
+	}
+
+	spinlock_release(&task_lock);
 	return ret;
 }
 
-void set_pcpu_used(uint16_t pcpu_id)
+/**
+ * @pre task_rc != NULL
+ */
+void free_task(struct sched_task_rc *task_rc)
 {
-	bitmap_set_lock(pcpu_id, &pcpu_used_bitmap);
-}
+	uint16_t pcpu_id = task_rc->pcpu_id;
+	uint16_t task_id = task_rc->task_id;
 
-void free_pcpu(uint16_t pcpu_id)
-{
-	bitmap_clear_lock(pcpu_id, &pcpu_used_bitmap);
+	spinlock_obtain(&task_lock);
+	pr_err("%s: pcpu_id %d, task_id 0x%x\n", __func__, pcpu_id, task_id);
+	if (task_id < CONFIG_TASK_PER_PCPU) {
+		bitmap_clear_nolock(pcpu_id, &pcpu_used_bitmap[task_id]);
+	} else {
+		uint16_t i;
+
+		for (i = 0U; i < CONFIG_TASK_PER_PCPU; i++) {
+			bitmap_clear_nolock(pcpu_id, &pcpu_used_bitmap[i]);
+		}
+	}
+	spinlock_release(&task_lock);
 }
 
 void add_to_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id)
@@ -164,6 +251,14 @@ struct sched_object *get_cur_sched_obj(uint16_t pcpu_id)
 	release_schedule_lock(pcpu_id);
 
 	return obj;
+}
+
+/**
+ * @pre obj != NULL
+ */
+uint16_t pcpuid_from_sched_obj(const struct sched_object *obj)
+{
+	return obj->task_rc.pcpu_id;
 }
 
 static void prepare_switch(struct sched_object *prev, struct sched_object *next)

@@ -261,7 +261,6 @@ int32_t hcall_pause_vm(uint16_t vmid)
 int32_t hcall_create_vcpu(struct acrn_vm *vm, uint16_t vmid, uint64_t param)
 {
 	int32_t ret;
-	uint16_t pcpu_id;
 	struct acrn_create_vcpu cv;
 	struct acrn_vm *target_vm = get_vm_from_vmid(vmid);
 
@@ -271,12 +270,15 @@ int32_t hcall_create_vcpu(struct acrn_vm *vm, uint16_t vmid, uint64_t param)
 		pr_err("%s: Unable copy param to vm\n", __func__);
 	        ret = -1;
 	} else {
-		pcpu_id = allocate_pcpu();
-		if (pcpu_id == INVALID_CPU_ID) {
+		struct sched_task_rc task_rc;
+
+		task_rc.pcpu_id = INVALID_CPU_ID;
+		task_rc.task_id = TASK_ID_MONOPOLY;
+		ret = allocate_task(&task_rc);
+		if (ret < 0) {
 			pr_err("%s: No physical available\n", __func__);
-			ret = -1;
 		} else {
-			ret = prepare_vcpu(target_vm, pcpu_id);
+			ret = prepare_vcpu(target_vm, &task_rc);
 		}
 	}
 
@@ -431,7 +433,7 @@ static void inject_msi_lapic_pt(struct acrn_vm *vm, const struct acrn_msi_entry 
 		icr.bits.dest_field = dest;
 		icr.bits.vector = vmsi_data.bits.vector;
 		icr.bits.delivery_mode = vmsi_data.bits.delivery_mode;
-		icr.bits.destination_mode = MSI_ADDR_DESTMODE_LOGICAL; 
+		icr.bits.destination_mode = MSI_ADDR_DESTMODE_LOGICAL;
 
 		msr_write(MSR_IA32_EXT_APIC_ICR, icr.value);
 		dev_dbg(ACRN_DBG_LAPICPT, "%s: icr.value 0x%016llx", __func__, icr.value);

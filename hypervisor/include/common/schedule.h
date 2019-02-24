@@ -14,12 +14,22 @@
 #define DEL_MODE_INIT		(1U)
 #define DEL_MODE_IPI		(2U)
 
+#define INVALID_TASK_ID		0xFFFFU
+#define TASK_ID_MONOPOLY	0xFFFEU
+
 struct sched_object;
 typedef void (*run_thread_t)(struct sched_object *obj);
 typedef void (*prepare_switch_t)(struct sched_object *obj);
+
+struct sched_task_rc {
+	uint16_t pcpu_id;
+	uint16_t task_id;
+};
+
 struct sched_object {
 	char name[16];
 	struct list_head run_list;
+	struct sched_task_rc task_rc;
 	uint64_t host_sp;
 	run_thread_t thread;
 	prepare_switch_t prepare_switch_out;
@@ -39,9 +49,8 @@ void switch_to_idle(run_thread_t idle_thread);
 void get_schedule_lock(uint16_t pcpu_id);
 void release_schedule_lock(uint16_t pcpu_id);
 
-void set_pcpu_used(uint16_t pcpu_id);
-uint16_t allocate_pcpu(void);
-void free_pcpu(uint16_t pcpu_id);
+int32_t allocate_task(struct sched_task_rc *task_rc);
+void free_task(struct sched_task_rc *task_rc);
 
 void add_to_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id);
 void remove_from_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id);
@@ -51,6 +60,8 @@ bool need_reschedule(uint16_t pcpu_id);
 void make_pcpu_offline(uint16_t pcpu_id);
 int32_t need_offline(uint16_t pcpu_id);
 struct sched_object *get_cur_sched_obj(uint16_t pcpu_id);
+
+uint16_t pcpuid_from_sched_obj(const struct sched_object *obj);
 
 void schedule(void);
 void run_sched_thread(struct sched_object *obj);
