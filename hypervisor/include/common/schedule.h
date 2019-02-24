@@ -50,6 +50,7 @@ void make_reschedule_request(uint16_t pcpu_id, uint16_t delmode);
 bool need_reschedule(uint16_t pcpu_id);
 void make_pcpu_offline(uint16_t pcpu_id);
 int32_t need_offline(uint16_t pcpu_id);
+struct sched_object *get_cur_sched_obj(uint16_t pcpu_id);
 
 void schedule(void);
 void run_sched_thread(struct sched_object *obj);

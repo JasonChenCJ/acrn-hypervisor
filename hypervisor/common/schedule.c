@@ -152,6 +152,20 @@ int32_t need_offline(uint16_t pcpu_id)
 	return bitmap_test_and_clear_lock(NEED_OFFLINE, &ctx->flags);
 }
 
+struct sched_object *get_cur_sched_obj(uint16_t pcpu_id)
+{
+	struct sched_context *ctx = &per_cpu(sched_ctx, pcpu_id);
+	struct sched_object *obj = NULL;
+
+	get_schedule_lock(pcpu_id);
+	if (ctx->curr_obj != &get_cpu_var(idle)) {
+		obj = ctx->curr_obj;
+	}
+	release_schedule_lock(pcpu_id);
+
+	return obj;
+}
+
 static void prepare_switch(struct sched_object *prev, struct sched_object *next)
 {
 	if ((prev != NULL) && (prev->prepare_switch_out != NULL)) {

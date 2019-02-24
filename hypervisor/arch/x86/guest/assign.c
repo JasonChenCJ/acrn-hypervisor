@@ -496,10 +496,10 @@ static void ptirq_handle_intx(struct acrn_vm *vm,
 
 void ptirq_softirq(uint16_t pcpu_id)
 {
-	struct acrn_vcpu *vcpu = (struct acrn_vcpu *)per_cpu(vcpu, pcpu_id);
-	struct acrn_vm *vm = vcpu->vm;
+	struct acrn_vcpu *vcpu = get_running_vcpu(pcpu_id);
 
-	while (1) {
+	while (vcpu != NULL) {
+		struct acrn_vm *vm = vcpu->vm;
 		struct ptirq_remapping_info *entry = ptirq_dequeue_softirq(vm);
 		struct ptirq_msi_info *msi;
 
