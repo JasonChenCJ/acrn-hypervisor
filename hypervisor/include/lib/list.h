@@ -73,6 +73,18 @@ static inline void list_del_init(struct list_head *entry)
 	INIT_LIST_HEAD(entry);
 }
 
+static inline void list_move(struct list_head *entry, struct list_head *head)
+{
+	list_del_node(entry->prev, entry->next);
+	list_add_node(entry, head, head->next);
+}
+
+static inline void list_move_tail(struct list_head *entry, struct list_head *head)
+{
+	list_del_node(entry->prev, entry->next);
+	list_add_node(entry, head->prev, head);
+}
+
 static inline _Bool list_empty(const struct list_head *head)
 {
 	return head->next == head;
