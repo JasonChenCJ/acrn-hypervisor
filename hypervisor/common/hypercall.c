@@ -273,7 +273,7 @@ int32_t hcall_create_vcpu(struct acrn_vm *vm, uint16_t vmid, uint64_t param)
 		struct sched_task_rc task_rc;
 
 		task_rc.pcpu_id = INVALID_CPU_ID;
-		task_rc.task_id = TASK_ID_MONOPOLY;
+		task_rc.task_id = INVALID_TASK_ID;
 		ret = allocate_task(&task_rc);
 		if (ret < 0) {
 			pr_err("%s: No physical available\n", __func__);

@@ -15,10 +15,52 @@
 #include <errno.h>
 
 #define CONFIG_TASK_PER_PCPU 3
+#define CONFIG_TASK_SLICE_MS 100
 
 static uint64_t pcpu_used_bitmap[CONFIG_TASK_PER_PCPU];
 
 static spinlock_t task_lock = { .head = 0U, .tail = 0U };
+
+static void sched_timer_callback(void *data)
+{
+	struct sched_context *ctx = (struct sched_context *)data;
+	uint16_t pcpu_id = get_cpu_id();
+
+	get_schedule_lock(pcpu_id);
+	if (!list_empty(&ctx->runqueue)) {
+		make_reschedule_request(pcpu_id, DEL_MODE_IPI);
+	}
+	release_schedule_lock(pcpu_id);
+}
+
+/*
+ * Called from schedule(), there are only 3 kind of schedule operations:
+ * 1. vcpu first kick to run - schedule_vcpu - add to runlist
+ * 2. vcpu pause to PAUSED state - pause_vcpu - remove from runlist
+ * 3. vcpu resume to RUNNING state - resume_vcpu - add to runlist
+ *
+ * after enable cpu sharing, a per_cpu sched_context.runlist may add more than 1 objs,
+ * update_sched_timer is used when there are more than 1 objs in the runlist.
+ * that is to say, if the obj number < 2, we should not add timer for triggering schedule:
+ * - if obj number is 0, means idle thread will be run
+ * - if obj number is 1, means no need sharing cpu slice
+ */
+static void update_sched_timer(struct sched_context *ctx, struct sched_object *next)
+{
+	/* if already has started timer, means previous vcpu task is paused
+	 * we should set timer based on next vcpu task's slice
+	 */
+	if (timer_is_started(&ctx->timer)) {
+		del_timer(&ctx->timer);
+	}
+
+	/* add timer only when next != idle && more than one item in runlist */
+	if (!list_empty(&ctx->runqueue) &&
+		(get_first_item(&ctx->runqueue, struct sched_object, run_list) != next)) {
+		ctx->timer.fire_tsc = rdtsc() + next->task_rc.slice_cycles;;
+		(void)add_timer(&ctx->timer);
+	}
+}
 
 void init_scheduler(void)
 {
@@ -34,6 +76,7 @@ void init_scheduler(void)
 		INIT_LIST_HEAD(&ctx->runqueue);
 		ctx->flags = 0UL;
 		ctx->curr_obj = NULL;
+		initialize_timer(&ctx->timer, sched_timer_callback, ctx, 0UL, 0, 0UL);
 	}
 }
 
@@ -128,7 +171,8 @@ int32_t allocate_task(struct sched_task_rc *task_rc)
 		pin_task(pcpu_id, task_id);
 		task_rc->pcpu_id = pcpu_id;
 		task_rc->task_id = task_id;
-		pr_err("%s: pcpu_id %d, task_id 0x%x\n", __func__, pcpu_id, task_id);
+		task_rc->slice_cycles = CONFIG_TASK_SLICE_MS * CYCLES_PER_MS;
+		pr_err("%s: pcpu_id %d, task_id 0x%x, cycles %lld\n", __func__, pcpu_id, task_id, task_rc->slice_cycles);
 	}
 
 	spinlock_release(&task_lock);
@@ -163,7 +207,7 @@ void add_to_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id)
 
 	spinlock_obtain(&ctx->runqueue_lock);
 	if (list_empty(&obj->run_list)) {
-		list_add_tail(&obj->run_list, &ctx->runqueue);
+		list_add(&obj->run_list, &ctx->runqueue);
 	}
 	spinlock_release(&ctx->runqueue_lock);
 }
@@ -184,6 +228,7 @@ static struct sched_object *get_next_sched_obj(struct sched_context *ctx)
 	spinlock_obtain(&ctx->runqueue_lock);
 	if (!list_empty(&ctx->runqueue)) {
 		obj = get_first_item(&ctx->runqueue, struct sched_object, run_list);
+		list_move_tail(&obj->run_list, &ctx->runqueue);
 	} else {
 		obj = &get_cpu_var(idle);
 	}
@@ -290,6 +335,7 @@ void schedule(void)
 		release_schedule_lock(pcpu_id);
 	} else {
 		prepare_switch(prev, next);
+		update_sched_timer(ctx, next);
 		release_schedule_lock(pcpu_id);
 
 		arch_switch_to(&prev->host_sp, &next->host_sp);

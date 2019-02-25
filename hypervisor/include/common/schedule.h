@@ -24,6 +24,7 @@ typedef void (*prepare_switch_t)(struct sched_object *obj);
 struct sched_task_rc {
 	uint16_t pcpu_id;
 	uint16_t task_id;
+	uint64_t slice_cycles;
 };
 
 struct sched_object {
@@ -42,6 +43,7 @@ struct sched_context {
 	uint64_t flags;
 	struct sched_object *curr_obj;
 	spinlock_t scheduler_lock;
+	struct hv_timer timer;
 };
 
 void init_scheduler(void);
