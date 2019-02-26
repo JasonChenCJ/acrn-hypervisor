@@ -638,11 +638,8 @@ static void context_switch_out(struct sched_object *prev)
 	cancel_event_injection(vcpu);
 
 	atomic_store32(&vcpu->running, 0U);
-	/* do prev vcpu context switch out */
-	/* For now, we don't need to invalid ept.
-	 * But if we have more than one vcpu on one pcpu,
-	 * we need add ept invalid operation here.
-	 */
+
+	/*XXX: do we really need flush ept or vpid here? */
 }
 
 static void context_switch_in(struct sched_object *next)
@@ -653,12 +650,7 @@ static void context_switch_in(struct sched_object *next)
 
 	per_cpu(ever_run_vcpu, pcpuid_from_vcpu(vcpu)) = vcpu;
 
-	/* FIXME:
-	 * Now, we don't need to load new vcpu VMCS because
-	 * we only do switch between vcpu loop and idle loop.
-	 * If we have more than one vcpu on on pcpu, need to
-	 * add VMCS load operation here.
-	 */
+	switch_vmcs(vcpu);
 }
 
 void schedule_vcpu(struct acrn_vcpu *vcpu)

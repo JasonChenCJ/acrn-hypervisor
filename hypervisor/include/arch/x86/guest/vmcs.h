@@ -49,6 +49,7 @@ static inline uint64_t apic_access_offset(uint64_t qual)
 #define VMX_SUPPORT_UNRESTRICTED_GUEST (1U<<5U)
 
 void init_vmcs(struct acrn_vcpu *vcpu);
+void switch_vmcs(struct acrn_vcpu *vcpu);
 
 uint64_t vmx_rdmsr_pat(const struct acrn_vcpu *vcpu);
 int32_t vmx_wrmsr_pat(struct acrn_vcpu *vcpu, uint64_t value);
