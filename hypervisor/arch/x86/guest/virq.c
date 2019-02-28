@@ -133,12 +133,14 @@ void vcpu_make_request(struct acrn_vcpu *vcpu, uint16_t eventid)
 	 * if current hostcpu is not the target vcpu's hostcpu, we need
 	 * to invoke IPI to wake up target vcpu
 	 *
-	 * TODO: Here we just compare with cpuid, since cpuid currently is
-	 *  global under pCPU / vCPU 1:1 mapping. If later we enabled vcpu
-	 *  scheduling, we need change here to determine it target vcpu is
-	 *  VMX non-root or root mode
+	 * kick target CPU out of non-root mode, only when target CPU is not
+	 * current CPU and the running VCPU on target CPU is the target VCPU
+	 * we want to make request.
+	 *
+	 * TODO: we should finally do ipi only when target CPU is in non-root
+	 *  mode
 	 */
-	if (get_cpu_id() != pcpu_id) {
+	if ((get_cpu_id() != pcpu_id) && (get_running_vcpu(pcpu_id) == vcpu)) {
 		send_single_ipi(pcpu_id, VECTOR_NOTIFY_VCPU);
 	}
 }
@@ -258,10 +260,12 @@ int32_t vcpu_queue_exception(struct acrn_vcpu *vcpu, uint32_t vector_arg, uint32
 				/* generate double fault */
 				vector = IDT_DF;
 				err_code = 0U;
+				pr_err("%s: double fault prev 0x%x curr 0x%x", __func__, prev_vector, vector);
 			} else {
 				/* Trigger the given exception instead of override it with
 				 * double/triple fault. */
 			}
+			pr_err("%s: queue exception vector 0x%x", __func__, vector);
 
 			arch->exception_info.exception = vector;
 
