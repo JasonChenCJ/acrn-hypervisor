@@ -24,6 +24,7 @@ typedef void (*prepare_switch_t)(struct sched_object *obj);
 struct sched_task_rc {
 	uint16_t pcpu_id;
 	uint16_t task_id;
+	uint64_t left_cycles;
 	uint64_t slice_cycles;
 };
 

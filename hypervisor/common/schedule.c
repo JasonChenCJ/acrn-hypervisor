@@ -21,6 +21,11 @@ static uint64_t pcpu_used_bitmap[CONFIG_TASK_PER_PCPU];
 
 static spinlock_t task_lock = { .head = 0U, .tail = 0U };
 
+static inline bool is_idle(struct sched_object *obj, uint16_t pcpu_id)
+{
+	return (obj == &per_cpu(idle, pcpu_id));
+}
+
 static void sched_timer_callback(void *data)
 {
 	struct sched_context *ctx = (struct sched_context *)data;
@@ -40,25 +45,36 @@ static void sched_timer_callback(void *data)
  * 3. vcpu resume to RUNNING state - resume_vcpu - add to runlist
  *
  * after enable cpu sharing, a per_cpu sched_context.runlist may add more than 1 objs,
- * update_sched_timer is used when there are more than 1 objs in the runlist.
+ * update_sched_timer is used to update prev task's left_cycles (if need) and tigger new sched timer
+ * when there are more than 1 objs in the runlist.
  * that is to say, if the obj number < 2, we should not add timer for triggering schedule:
- * - if obj number is 0, means idle thread will be run
- * - if obj number is 1, means no need sharing cpu slice
+ * - if next obj is idle, means there is 0 obj in runlist, and no need sharing cpu slice for idle
+ * - if next obj is not idle, but it's the only one in the runlist, means no need sharing cpu slice
  */
-static void update_sched_timer(struct sched_context *ctx, struct sched_object *next)
+static void update_sched_timer(struct sched_context *ctx, struct sched_object *prev, struct sched_object *next)
 {
-	/* if already has started timer, means previous vcpu task is paused
-	 * we should set timer based on next vcpu task's slice
-	 */
-	if (timer_is_started(&ctx->timer)) {
-		del_timer(&ctx->timer);
+	uint16_t pcpu_id = get_cpu_id();
+	uint64_t now = rdtsc();
+
+	if (!is_idle(prev, pcpu_id)) {
+		if (timer_is_started(&ctx->timer)) {
+			del_timer(&ctx->timer);
+			if (ctx->timer.fire_tsc > now) {
+				prev->task_rc.left_cycles = ctx->timer.fire_tsc - now;
+			} else {
+				prev->task_rc.left_cycles = prev->task_rc.slice_cycles;
+			}
+		} else {
+			prev->task_rc.left_cycles = prev->task_rc.slice_cycles;
+		}
 	}
 
-	/* add timer only when next != idle && more than one item in runlist */
-	if (!list_empty(&ctx->runqueue) &&
-		(get_first_item(&ctx->runqueue, struct sched_object, run_list) != next)) {
-		ctx->timer.fire_tsc = rdtsc() + next->task_rc.slice_cycles;;
-		(void)add_timer(&ctx->timer);
+	if (!is_idle(next, pcpu_id)) {
+		/* next is not the only one obj in runlist */
+		if (get_first_item(&ctx->runqueue, struct sched_object, run_list) != next) {
+			ctx->timer.fire_tsc = now + next->task_rc.left_cycles;
+			(void)add_timer(&ctx->timer);
+		}
 	}
 }
 
@@ -171,7 +187,7 @@ int32_t allocate_task(struct sched_task_rc *task_rc)
 		pin_task(pcpu_id, task_id);
 		task_rc->pcpu_id = pcpu_id;
 		task_rc->task_id = task_id;
-		task_rc->slice_cycles = CONFIG_TASK_SLICE_MS * CYCLES_PER_MS;
+		task_rc->left_cycles = task_rc->slice_cycles = CONFIG_TASK_SLICE_MS * CYCLES_PER_MS;
 		pr_err("%s: pcpu_id %d, task_id 0x%x, cycles %lld\n", __func__, pcpu_id, task_id, task_rc->slice_cycles);
 	}
 
@@ -290,7 +306,7 @@ struct sched_object *get_cur_sched_obj(uint16_t pcpu_id)
 	struct sched_object *obj = NULL;
 
 	get_schedule_lock(pcpu_id);
-	if (ctx->curr_obj != &get_cpu_var(idle)) {
+	if (!is_idle(ctx->curr_obj, pcpu_id)) {
 		obj = ctx->curr_obj;
 	}
 	release_schedule_lock(pcpu_id);
@@ -335,7 +351,7 @@ void schedule(void)
 		release_schedule_lock(pcpu_id);
 	} else {
 		prepare_switch(prev, next);
-		update_sched_timer(ctx, next);
+		update_sched_timer(ctx, prev, next);
 		release_schedule_lock(pcpu_id);
 
 		arch_switch_to(&prev->host_sp, &next->host_sp);
