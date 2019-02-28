@@ -633,6 +633,7 @@ void resume_vcpu(struct acrn_vcpu *vcpu)
 static void context_switch_out(struct sched_object *prev)
 {
 	struct acrn_vcpu *vcpu = list_entry(prev, struct acrn_vcpu, sched_obj);
+	struct ext_context *ectx = &(vcpu->arch.contexts[vcpu->arch.cur_context].ext_ctx);
 
 	/* cancel event(int, gp, nmi and exception) injection */
 	cancel_event_injection(vcpu);
@@ -640,17 +641,31 @@ static void context_switch_out(struct sched_object *prev)
 	atomic_store32(&vcpu->running, 0U);
 
 	/*XXX: do we really need flush ept or vpid here? */
+	ectx->ia32_star = msr_read(MSR_IA32_STAR);
+	ectx->ia32_lstar = msr_read(MSR_IA32_LSTAR);
+	ectx->ia32_fmask = msr_read(MSR_IA32_FMASK);
+	ectx->ia32_kernel_gs_base = msr_read(MSR_IA32_KERNEL_GS_BASE);
+
+	save_fxstore_guest_area(ectx);
 }
 
 static void context_switch_in(struct sched_object *next)
 {
 	struct acrn_vcpu *vcpu = list_entry(next, struct acrn_vcpu, sched_obj);
+	struct ext_context *ectx = &(vcpu->arch.contexts[vcpu->arch.cur_context].ext_ctx);
 
 	atomic_store32(&vcpu->running, 1U);
 
 	per_cpu(ever_run_vcpu, pcpuid_from_vcpu(vcpu)) = vcpu;
 
 	switch_vmcs(vcpu);
+
+	msr_write(MSR_IA32_STAR, ectx->ia32_star);
+	msr_write(MSR_IA32_LSTAR, ectx->ia32_lstar);
+	msr_write(MSR_IA32_FMASK, ectx->ia32_fmask);
+	msr_write(MSR_IA32_KERNEL_GS_BASE, ectx->ia32_kernel_gs_base);
+
+	rstor_fxstore_guest_area(ectx);
 }
 
 void schedule_vcpu(struct acrn_vcpu *vcpu)
