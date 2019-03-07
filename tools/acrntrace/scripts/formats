@@ -25,3 +25,4 @@
 
 # For TRACE_6C
 0x00000005 CPU%(cpu)d 0x%(event)016x %(tsc)d sched timer for obj [%(1)c%(2)c%(3)c%(4)c%(5)c%(6)c]
+0x00000008 CPU%(cpu)d 0x%(event)016x %(tsc)d sched yield for obj [%(1)c%(2)c%(3)c%(4)c%(5)c%(6)c]
