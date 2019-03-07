@@ -44,12 +44,28 @@ static void sched_timer_callback(void *data)
  * 2. vcpu pause to PAUSED state - pause_vcpu - remove from runlist
  * 3. vcpu resume to RUNNING state - resume_vcpu - add to runlist
  *
- * after enable cpu sharing, a per_cpu sched_context.runlist may add more than 1 objs,
- * update_sched_timer is used to update prev task's left_cycles (if need) and tigger new sched timer
- * when there are more than 1 objs in the runlist.
- * that is to say, if the obj number < 2, we should not add timer for triggering schedule:
- * - if next obj is idle, means there is 0 obj in runlist, and no need sharing cpu slice for idle
- * - if next obj is not idle, but it's the only one in the runlist, means no need sharing cpu slice
+ *      PREV        NEXT         QUEUE       DESC
+ *  ===========================================================================================================
+ *      idle         A            {A}	     A kick to run
+ *                                           -> next sched timeout = now + A.left_cycles
+ *       A           A            {A}        Only A is running
+ *                                           -> A.left_cycles = A.slice_cycles
+ *                                           -> next sched timeout = now + A.left_cycles
+ *       A           B           {B, A}      B added in the queue, pre-empt to run
+ *                                           -> A is interrupted, A.left_cycles = ctx->timer.fire_tsc - now
+ *                                           -> next sched timeout = now + B.left_cycles
+ *       B           A           {A, B}      B run out slice, A continue to run with its left_cycles
+ *                                           -> B.left_cycles = B.slice_cycles
+ *                                           -> next sched timeout = now + A.left_cycles
+ *       A           B           {B, A}      A run out slice, B continue to run with its left_cycles
+ *                                           -> A.left_cycles = A.slice_cycles
+ *                                           -> next sched timeout = now + B.left_cycles
+ *       B           A            {A}        B removed from the queue, A continue to run with its left_cycles
+ *                                           -> B is interrupted, B.left_cycles = ctx->timer.fire_tsc - now
+ *                                           -> next sched timeout = now + A.left_cycles
+ *       A          idle          { }        A removed from the queue, idle continue to run
+ *                                           -> A is interrupted, A.left_cycles = ctx->timer.fire_tsc - now
+ *                                           -> no next sched timeout for idle
  */
 static void update_sched_timer(struct sched_context *ctx, struct sched_object *prev, struct sched_object *next)
 {
@@ -70,11 +86,8 @@ static void update_sched_timer(struct sched_context *ctx, struct sched_object *p
 	}
 
 	if (!is_idle(next, pcpu_id)) {
-		/* next is not the only one obj in runlist */
-		if (get_first_item(&ctx->runqueue, struct sched_object, run_list) != next) {
-			ctx->timer.fire_tsc = now + next->task_rc.left_cycles;
-			(void)add_timer(&ctx->timer);
-		}
+		ctx->timer.fire_tsc = now + next->task_rc.left_cycles;
+		(void)add_timer(&ctx->timer);
 	}
 }
 
@@ -348,6 +361,7 @@ void schedule(void)
 	bitmap_clear_lock(NEED_RESCHEDULE, &ctx->flags);
 
 	if (prev == next) {
+		update_sched_timer(ctx, prev, next);
 		release_schedule_lock(pcpu_id);
 	} else {
 		prepare_switch(prev, next);
