@@ -379,6 +379,18 @@ void schedule(void)
 	}
 }
 
+void yield(void)
+{
+	uint16_t pcpu_id = get_cpu_id();
+	struct sched_context *ctx = &per_cpu(sched_ctx, pcpu_id);
+
+	get_schedule_lock(pcpu_id);
+	if (!is_idle(ctx->curr_obj, pcpu_id)) {
+		make_reschedule_request(pcpu_id, DEL_MODE_IPI);
+	}
+	release_schedule_lock(pcpu_id);
+}
+
 void run_sched_thread(struct sched_object *obj)
 {
 	if (obj->thread != NULL) {

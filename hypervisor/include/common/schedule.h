@@ -66,6 +66,7 @@ struct sched_object *get_cur_sched_obj(uint16_t pcpu_id);
 
 uint16_t pcpuid_from_sched_obj(const struct sched_object *obj);
 
+void yield(void);
 void schedule(void);
 void run_sched_thread(struct sched_object *obj);
 
