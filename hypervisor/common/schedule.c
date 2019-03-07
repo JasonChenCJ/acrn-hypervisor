@@ -13,6 +13,7 @@
 #include <schedule.h>
 #include <sprintf.h>
 #include <errno.h>
+#include <trace.h>
 
 #define CONFIG_TASK_PER_PCPU 3
 #define CONFIG_TASK_SLICE_MS 100
@@ -83,11 +84,17 @@ static void update_sched_timer(struct sched_context *ctx, struct sched_object *p
 		} else {
 			prev->task_rc.left_cycles = prev->task_rc.slice_cycles;
 		}
+		TRACE_6C(TRACE_SCHED_OBJ, (uint8_t)prev->name[0], (uint8_t)prev->name[1], (uint8_t)prev->name[2],
+					(uint8_t)prev->name[6],(uint8_t)prev->name[7],(uint8_t)prev->name[8]);
+		TRACE_2L(TRACE_SCHED_SLICE_OUT, prev->task_rc.left_cycles, prev->task_rc.slice_cycles);
 	}
 
 	if (!is_idle(next, pcpu_id)) {
 		ctx->timer.fire_tsc = now + next->task_rc.left_cycles;
 		(void)add_timer(&ctx->timer);
+		TRACE_6C(TRACE_SCHED_OBJ, (uint8_t)next->name[0], (uint8_t)next->name[1], (uint8_t)next->name[2],
+					(uint8_t)next->name[6],(uint8_t)next->name[7],(uint8_t)next->name[8]);
+		TRACE_2L(TRACE_SCHED_SLICE_IN, next->task_rc.left_cycles, next->task_rc.slice_cycles);
 	}
 }
 
