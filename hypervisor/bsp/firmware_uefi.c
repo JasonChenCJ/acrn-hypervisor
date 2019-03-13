@@ -66,7 +66,7 @@ static void* uefi_get_rsdp(void)
 static void uefi_spurious_handler(int32_t vector)
 {
 	if (get_cpu_id() == BOOT_CPU_ID) {
-		struct acrn_vcpu *vcpu = get_running_vcpu(BOOT_CPU_ID);
+		struct acrn_vcpu *vcpu = get_ever_run_vcpu(BOOT_CPU_ID);
 
 		if (vcpu != NULL) {
 			vlapic_set_intr(vcpu, vector, LAPIC_TRIG_EDGE);

@@ -373,7 +373,6 @@ int32_t create_vcpu(uint16_t pcpu_id, struct acrn_vm *vm, struct acrn_vcpu **rtn
 	/* Initialize CPU ID for this VCPU */
 	vcpu->vcpu_id = vcpu_id;
 	vcpu->pcpu_id = pcpu_id;
-	per_cpu(ever_run_vcpu, pcpu_id) = vcpu;
 
 	/* Initialize the parent VM reference */
 	vcpu->vm = vm;
@@ -551,8 +550,9 @@ int32_t shutdown_vcpu(__unused struct acrn_vcpu *vcpu)
 void offline_vcpu(struct acrn_vcpu *vcpu)
 {
 	vlapic_free(vcpu);
-	per_cpu(ever_run_vcpu, vcpu->pcpu_id) = NULL;
 	free_pcpu(vcpu->pcpu_id);
+	if (per_cpu(ever_run_vcpu, vcpu->pcpu_id) == vcpu)
+		per_cpu(ever_run_vcpu, vcpu->pcpu_id) = NULL;
 	vcpu->state = VCPU_OFFLINE;
 }
 
@@ -661,6 +661,9 @@ static void context_switch_in(struct sched_object *next)
 	struct acrn_vcpu *vcpu = list_entry(next, struct acrn_vcpu, sched_obj);
 
 	atomic_store32(&vcpu->running, 1U);
+
+	per_cpu(ever_run_vcpu, vcpu->pcpu_id) = vcpu;
+
 	/* FIXME:
 	 * Now, we don't need to load new vcpu VMCS because
 	 * we only do switch between vcpu loop and idle loop.
