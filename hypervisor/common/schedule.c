@@ -248,6 +248,17 @@ void add_to_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id)
 	spinlock_release(&ctx->runqueue_lock);
 }
 
+void add_to_cpu_runqueue_tail(struct sched_object *obj, uint16_t pcpu_id)
+{
+	struct sched_context *ctx = &per_cpu(sched_ctx, pcpu_id);
+
+	spinlock_obtain(&ctx->runqueue_lock);
+	if (list_empty(&obj->run_list)) {
+		list_add_tail(&obj->run_list, &ctx->runqueue);
+	}
+	spinlock_release(&ctx->runqueue_lock);
+}
+
 void remove_from_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id)
 {
 	struct sched_context *ctx = &per_cpu(sched_ctx, pcpu_id);

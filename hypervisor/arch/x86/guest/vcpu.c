@@ -676,7 +676,7 @@ void schedule_vcpu(struct acrn_vcpu *vcpu)
 	pr_dbg("vcpu%hu scheduled", vcpu->vcpu_id);
 
 	get_schedule_lock(pcpu_id);
-	add_to_cpu_runqueue(&vcpu->sched_obj, pcpu_id);
+	add_to_cpu_runqueue_tail(&vcpu->sched_obj, pcpu_id);
 	make_reschedule_request(pcpu_id, DEL_MODE_IPI);
 	release_schedule_lock(pcpu_id);
 }

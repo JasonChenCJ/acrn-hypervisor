@@ -56,6 +56,7 @@ int32_t allocate_task(struct sched_task_rc *task_rc);
 void free_task(struct sched_task_rc *task_rc);
 
 void add_to_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id);
+void add_to_cpu_runqueue_tail(struct sched_object *obj, uint16_t pcpu_id);
 void remove_from_cpu_runqueue(struct sched_object *obj, uint16_t pcpu_id);
 
 void make_reschedule_request(uint16_t pcpu_id, uint16_t delmode);
