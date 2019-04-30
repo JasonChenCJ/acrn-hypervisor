@@ -23,7 +23,7 @@
 #include <mmu.h>
 #include <logmsg.h>
 #include <cat.h>
-#include <firmware.h>
+#include <vboot.h>
 #include <board.h>
 
 vm_sw_loader_t vm_sw_loader;

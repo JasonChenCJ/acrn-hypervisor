@@ -16,7 +16,7 @@
 #include <per_cpu.h>
 #include <multiboot.h>
 #include <boot_context.h>
-#include <firmware_uefi.h>
+#include <deprivilege_boot.h>
 
 static struct uefi_context uefi_ctx;
 static struct lapic_regs uefi_lapic_regs;

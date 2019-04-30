@@ -28,7 +28,7 @@
  */
 
 #include <hypervisor.h>
-#include <firmware.h>
+#include <vboot.h>
 #include "acpi_priv.h"
 #include "acpi.h"
 

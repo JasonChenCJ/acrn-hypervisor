@@ -8,9 +8,10 @@
 #include <vm.h>
 #include <types.h>
 #include <pgtable.h>
-#include <firmware.h>
-#include <firmware_sbl.h>
-#include <firmware_uefi.h>
+#include <vboot.h>
+#include <direct_boot.h>
+#include <deprivilege_boot.h>
+#include <acpi.h>
 #include "platform_acpi_info.h"
 
 static struct firmware_operations *firmware_ops;
