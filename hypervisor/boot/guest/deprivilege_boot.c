@@ -88,7 +88,6 @@ static struct vboot_operations depri_boot_ops = {
 	.get_ap_trampoline = get_depri_boot_ap_trampoline,
 	.get_rsdp = get_depri_boot_rsdp,
 	.init_irq = init_depri_boot_irq,
-	.init_vboot_info = init_depri_vboot_info,
 };
 
 struct vboot_operations* get_deprivilege_boot_ops(void)

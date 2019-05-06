@@ -162,9 +162,7 @@ C_SRCS += boot/dmar_parse.c
 C_SRCS += boot/cmdline.c
 C_SRCS += boot/guest/vboot_wrapper.c
 C_SRCS += boot/guest/deprivilege_boot.c
-C_SRCS += boot/guest/deprivilege_boot_info.c
 C_SRCS += boot/guest/direct_boot.c
-C_SRCS += boot/guest/direct_boot_info.c
 
 S_SRCS += arch/x86/idt.S
 C_SRCS += arch/x86/ioapic.c
@@ -191,6 +189,7 @@ S_SRCS += arch/x86/sched.S
 C_SRCS += arch/x86/guest/vcpuid.c
 C_SRCS += arch/x86/guest/vcpu.c
 C_SRCS += arch/x86/guest/vm.c
+C_SRCS += arch/x86/guest/vm_boot.c
 C_SRCS += arch/x86/guest/vlapic.c
 C_SRCS += arch/x86/guest/vmtrr.c
 C_SRCS += arch/x86/guest/guest_memory.c

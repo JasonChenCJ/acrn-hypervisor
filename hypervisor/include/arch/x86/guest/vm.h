@@ -222,6 +222,8 @@ bool is_lapic_pt(const struct acrn_vm *vm);
 bool is_rt_vm(const struct acrn_vm *vm);
 bool vm_hide_mtrr(const struct acrn_vm *vm);
 
+int32_t init_vm_boot_info(struct acrn_vm *vm);
+
 #endif /* !ASSEMBLER */
 
 #endif /* VM_H_ */
