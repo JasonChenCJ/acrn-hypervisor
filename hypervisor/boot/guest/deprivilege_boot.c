@@ -64,23 +64,9 @@ static void* get_depri_boot_rsdp(void)
 	return hpa2hva((uint64_t)(depri_boot_ctx.rsdp));
 }
 
-static void depri_boot_spurious_handler(int32_t vector)
-{
-	if (get_pcpu_id() == BOOT_CPU_ID) {
-		struct acrn_vcpu *vcpu = per_cpu(vcpu, BOOT_CPU_ID);
-
-		if (vcpu != NULL) {
-			vlapic_set_intr(vcpu, vector, LAPIC_TRIG_EDGE);
-		} else {
-			pr_err("%s vcpu or vlapic is not ready, interrupt lost\n", __func__);
-		}
-	}
-}
-
 static void init_depri_boot_irq(void)
 {
-	spurious_handler = (spurious_handler_t)depri_boot_spurious_handler;
-	/* we defer irq enabling till vlapic is ready */
+	/* nothing to do for now */
 }
 
 static struct vboot_operations depri_boot_ops = {

@@ -7,6 +7,7 @@
 #include <types.h>
 #include <errno.h>
 #include <cpu.h>
+#include <irq.h>
 #include <per_cpu.h>
 #include <guest/vm.h>
 #include <boot_context.h>
@@ -242,6 +243,19 @@ static int32_t init_direct_vboot_info(struct acrn_vm *vm)
 	return ret;
 }
 
+static void depri_boot_spurious_handler(int32_t vector)
+{
+	if (get_pcpu_id() == BOOT_CPU_ID) {
+		struct acrn_vcpu *vcpu = per_cpu(vcpu, BOOT_CPU_ID);
+
+		if (vcpu != NULL) {
+			vlapic_set_intr(vcpu, vector, LAPIC_TRIG_EDGE);
+		} else {
+			pr_err("%s vcpu or vlapic is not ready, interrupt lost\n", __func__);
+		}
+	}
+}
+
 static int32_t depri_boot_sw_loader(struct acrn_vm *vm)
 {
 	int32_t ret = 0;
@@ -268,6 +282,7 @@ static int32_t depri_boot_sw_loader(struct acrn_vm *vm)
 	set_vcpu_regs(vcpu, vcpu_regs);
 
 	/* defer irq enabling till vlapic is ready */
+	spurious_handler = (spurious_handler_t)depri_boot_spurious_handler;
 	CPU_IRQ_ENABLE();
 
 	return ret;
