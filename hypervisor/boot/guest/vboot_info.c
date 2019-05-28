@@ -135,6 +135,15 @@ static void merge_cmdline(const struct acrn_vm *vm, const char *cmdline, const c
 	}
 }
 
+static uint32_t get_kernel_require_memsize(void *kernel_src_addr)
+{
+	struct zero_page *zeropage;
+
+	zeropage = (struct zero_page *)kernel_src_addr;
+
+	return zeropage->hdr.init_size;
+}
+
 static void *get_kernel_load_addr(void *kernel_src_addr)
 {
 	struct zero_page *zeropage;
@@ -196,8 +205,19 @@ static int32_t init_general_vm_boot_info(struct acrn_vm *vm)
 					vm->sw.linux_info.bootargs_size =
 						strnlen_s(vm_config->os_config.bootargs, MAX_BOOTARGS_SIZE);
 				} else {
+					uint32_t kernel_size;
+
 					vm->sw.kernel_info.kernel_load_addr =
 						get_kernel_load_addr(vm->sw.kernel_info.kernel_src_addr);
+					kernel_size = get_kernel_require_memsize(vm->sw.kernel_info.kernel_src_addr);
+
+					if (!guest_memory_avaid(vm,
+						(uint64_t)vm->sw.kernel_info.kernel_load_addr, kernel_size)) {
+						pr_fatal("guest memory is not avalid for kernel:");
+						pr_fatal("load addr: 0x%llx", vm->sw.kernel_info.kernel_load_addr);
+						pr_fatal("load size: 0x%llx", kernel_size);
+						panic("guest memory not avalid");
+					}
 
 					if ((mbi->mi_flags & MULTIBOOT_INFO_HAS_CMDLINE) != 0U) {
 						/*

@@ -95,6 +95,8 @@ int32_t copy_to_gpa(struct acrn_vm *vm, void *h_ptr, uint64_t gpa, uint32_t size
  */
 int32_t copy_from_gva(struct acrn_vcpu *vcpu, void *h_ptr, uint64_t gva,
 	uint32_t size, uint32_t *err_code, uint64_t *fault_addr);
+
+bool guest_memory_avaid(struct acrn_vm *vm, uint64_t start_gpa, uint32_t size);
 /**
  * @}
  */

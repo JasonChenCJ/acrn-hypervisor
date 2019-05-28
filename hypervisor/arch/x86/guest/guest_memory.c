@@ -431,3 +431,24 @@ void *gpa2hva(struct acrn_vm *vm, uint64_t x)
 {
 	return hpa2hva(gpa2hpa(vm, x));
 }
+
+bool guest_memory_avaid(struct acrn_vm *vm, uint64_t start_gpa, uint32_t size)
+{
+	uint64_t hpa, gpa = start_gpa;
+	int64_t left_size = (int64_t)size;
+	uint32_t pg_size;
+	bool ret = true;
+
+	while (left_size > 0) {
+		hpa = local_gpa2hpa(vm, gpa, &pg_size);
+		if (hpa == INVALID_HPA) {
+			ret = false;
+			break;
+		} else {
+			gpa += pg_size;
+			left_size -= pg_size;
+		}
+	}
+
+	return ret;
+}

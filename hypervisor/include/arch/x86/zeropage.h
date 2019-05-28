@@ -30,7 +30,8 @@ struct zero_page {
 		uint32_t payload_length;/* 0x24c */
 		uint8_t hdr_pad6[0x8];	/* 0x250 */
 		uint64_t pref_addr;     /* 0x258 */
-		uint8_t hdr_pad7[8];    /* 0x260 */
+		uint32_t init_size;	/* 0x260 */
+		uint8_t hdr_pad7[4];    /* 0x264 */
 	} __packed hdr;
 
 	uint8_t pad3[0x68];	/* 0x268 */
