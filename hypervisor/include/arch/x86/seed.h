@@ -19,13 +19,6 @@ struct seed_info {
 	uint8_t seed[BUP_MKHI_BOOTLOADER_SEED_LEN];
 };
 
-/* Structure of physical seed */
-struct physical_seed {
-	struct seed_info seed_list[BOOTLOADER_SEED_MAX_ENTRIES];
-	uint32_t num_seeds;
-	uint32_t pad;
-};
-
 void init_seed(void);
 
 void fill_seed_arg(char *cmd_dst, size_t cmd_sz);
