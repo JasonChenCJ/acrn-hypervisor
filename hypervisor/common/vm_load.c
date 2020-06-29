@@ -5,8 +5,6 @@
  */
 
 #include <vm.h>
-#include <e820.h>
-#include <zeropage.h>
 #include <ept.h>
 #include <mmu.h>
 #include <multiboot.h>

@@ -31,3 +31,5 @@ bool is_pci_dbg_uart(__unused union pci_bdf bdf_value) { return false; }
 
 void shell_init(void) {}
 void shell_kick(void) {}
+
+void parse_hv_cmdline(void) {}

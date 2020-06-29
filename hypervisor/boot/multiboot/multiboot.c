@@ -7,18 +7,69 @@
 #include <types.h>
 #include <errno.h>
 #include <pgtable.h>
-#include <boot.h>
+#include <multiboot.h>
 #include <rtl.h>
 #include <logmsg.h>
+#include "multiboot_priv.h"
 
-struct acrn_multiboot_info acrn_mbi = { 0U };
+struct multiboot_info {
+	uint32_t               mi_flags;
 
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_MEMORY. */
+	uint32_t               mi_mem_lower;
+	uint32_t               mi_mem_upper;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_BOOT_DEVICE. */
+	uint8_t                 mi_boot_device_part3;
+	uint8_t                 mi_boot_device_part2;
+	uint8_t                 mi_boot_device_part1;
+	uint8_t                 mi_boot_device_drive;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_CMDLINE. */
+	uint32_t                mi_cmdline;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_MODS. */
+	uint32_t               mi_mods_count;
+	uint32_t               mi_mods_addr;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_{AOUT,ELF}_SYMS. */
+	uint32_t               mi_elfshdr_num;
+	uint32_t               mi_elfshdr_size;
+	uint32_t               mi_elfshdr_addr;
+	uint32_t               mi_elfshdr_shndx;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_MMAP. */
+	uint32_t               mi_mmap_length;
+	uint32_t               mi_mmap_addr;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_DRIVES. */
+	uint32_t               mi_drives_length;
+	uint32_t               mi_drives_addr;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_CONFIG_TABLE. */
+	uint32_t               unused_mi_config_table;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_LOADER_NAME. */
+	uint32_t               mi_loader_name;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_APM. */
+	uint32_t               unused_mi_apm_table;
+
+	/* Valid if mi_flags sets MULTIBOOT_INFO_HAS_VBE. */
+	uint32_t               unused_mi_vbe_control_info;
+	uint32_t               unused_mi_vbe_mode_info;
+	uint32_t               unused_mi_vbe_interface_seg;
+	uint32_t               unused_mi_vbe_interface_off;
+	uint32_t               unused_mi_vbe_interface_len;
+};
+
+static struct acrn_multiboot_info acrn_mbi = { 0U };
 static int32_t mbi_status;
 
-void init_acrn_multiboot_info(void)
+void init_multiboot_info(uint32_t eax, uint32_t ebx, char *sig)
 {
-	if (boot_from_multiboot1()) {
-		struct multiboot_info *mbi = (struct multiboot_info *)(hpa2hva_early((uint64_t)boot_regs[1]));
+	if (boot_from_multiboot1(eax, ebx)) {
+		struct multiboot_info *mbi = (struct multiboot_info *)(hpa2hva_early((uint64_t)ebx));
 
 		acrn_mbi.mi_flags = mbi->mi_flags;
 		acrn_mbi.mi_drives_addr = mbi->mi_drives_addr;
@@ -31,22 +82,22 @@ void init_acrn_multiboot_info(void)
 		acrn_mbi.mi_mods_va = (struct multiboot_module *)hpa2hva_early((uint64_t)mbi->mi_mods_addr);
 		mbi_status = 0;
 #ifdef CONFIG_MULTIBOOT2
-	} else if (boot_from_multiboot2()) {
-		mbi_status = multiboot2_to_acrn_mbi(&acrn_mbi, hpa2hva_early((uint64_t)boot_regs[1]));
+	} else if (boot_from_multiboot2(eax)) {
+		mbi_status = multiboot2_to_acrn_mbi(&acrn_mbi, hpa2hva_early((uint64_t)ebx), sig);
 #endif
 	} else {
 		mbi_status = -ENODEV;
 	}
 }
 
-int32_t sanitize_multiboot_info(void)
+int32_t sanitize_multiboot_info(uint32_t eax, uint32_t ebx)
 {
 	if ((acrn_mbi.mi_mmap_entries != 0U) && (acrn_mbi.mi_mmap_va != NULL)) {
 		if (acrn_mbi.mi_mmap_entries > E820_MAX_ENTRIES) {
 			pr_err("Too many E820 entries %d\n", acrn_mbi.mi_mmap_entries);
 			acrn_mbi.mi_mmap_entries = E820_MAX_ENTRIES;
 		}
-		if (boot_from_multiboot1()) {
+		if (boot_from_multiboot1(eax, ebx)) {
 			uint32_t mmap_entry_size = sizeof(struct multiboot_mmap);
 
 			(void)memcpy_s((void *)(&acrn_mbi.mi_mmap_entry[0]),
@@ -55,7 +106,7 @@ int32_t sanitize_multiboot_info(void)
 				(acrn_mbi.mi_mmap_entries * mmap_entry_size));
 		}
 #ifdef CONFIG_MULTIBOOT2
-		if (boot_from_multiboot2()) {
+		if (boot_from_multiboot2(eax)) {
 			uint32_t i;
 			struct multiboot2_mmap_entry *mb2_mmap = (struct multiboot2_mmap_entry *)acrn_mbi.mi_mmap_va;
 
@@ -76,7 +127,7 @@ int32_t sanitize_multiboot_info(void)
 		acrn_mbi.mi_mods_count = MAX_MODULE_NUM;
 	}
 	if (acrn_mbi.mi_mods_count != 0U) {
-		if (boot_from_multiboot1() && (acrn_mbi.mi_mods_va != NULL)) {
+		if (boot_from_multiboot1(eax, ebx) && (acrn_mbi.mi_mods_va != NULL)) {
 			(void)memcpy_s((void *)(&acrn_mbi.mi_mods[0]),
 				(acrn_mbi.mi_mods_count * sizeof(struct multiboot_module)),
 				(const void *)acrn_mbi.mi_mods_va,
@@ -92,7 +143,7 @@ int32_t sanitize_multiboot_info(void)
 		mbi_status = -EINVAL;
 	}
 
-	if (boot_from_multiboot2()) {
+	if (boot_from_multiboot2(eax)) {
 		if (acrn_mbi.mi_efi_info.efi_memmap_hi != 0U) {
 			pr_err("the efi mmap address should be less than 4G!");
 			acrn_mbi.mi_flags &= ~MULTIBOOT_INFO_HAS_EFI_MMAP;
@@ -108,7 +159,7 @@ int32_t sanitize_multiboot_info(void)
 		pr_err("no bootloader name found!");
 		mbi_status = -EINVAL;
 	} else {
-		printf("Multiboot%s Bootloader: %s\n", boot_from_multiboot1() ? "" : "2", acrn_mbi.mi_loader_name);
+		printf("Multiboot%s Bootloader: %s\n", boot_from_multiboot1(eax, ebx) ? "" : "2", acrn_mbi.mi_loader_name);
 	}
 
 	return mbi_status;
@@ -122,17 +173,4 @@ int32_t sanitize_multiboot_info(void)
 struct acrn_multiboot_info *get_multiboot_info(void)
 {
 	return &acrn_mbi;
-}
-
-const void* get_rsdp_ptr(void)
-{
-	const void *rsdp_ptr;
-
-	if (boot_from_multiboot2()) {
-		rsdp_ptr = acrn_mbi.mi_acpi_rsdp_va;
-	} else {
-		rsdp_ptr = NULL;
-	}
-
-	return rsdp_ptr;
 }

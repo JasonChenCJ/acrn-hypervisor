@@ -40,4 +40,6 @@ void suspend_console(void);
 void resume_console(void);
 struct acrn_vuart *vm_console_vuart(struct acrn_vm *vm);
 
+void parse_hv_cmdline();
+
 #endif /* CONSOLE_H */

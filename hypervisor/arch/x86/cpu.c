@@ -29,6 +29,7 @@
 #include <vpci.h>
 #include <ivshmem.h>
 #include <ptcm.h>
+#include <boot.h>
 
 #define CPU_UP_TIMEOUT		100U /* millisecond */
 #define CPU_DOWN_TIMEOUT	100U /* millisecond */
@@ -129,10 +130,6 @@ void init_pcpu_pre(bool is_bsp)
 
 		if (detect_hardware_support() != 0) {
 			panic("hardware not support!");
-		}
-
-		if (sanitize_multiboot_info() != 0) {
-			panic("Multiboot info error!");
 		}
 
 		init_pcpu_model_name();
