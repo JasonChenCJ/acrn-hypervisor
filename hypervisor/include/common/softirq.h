@@ -13,8 +13,16 @@
 
 typedef void (*softirq_handler)(uint16_t cpu_id);
 
+#ifdef CONFIG_SOFTIRQ
 void init_softirq(void);
 void register_softirq(uint16_t nr, softirq_handler handler);
 void fire_softirq(uint16_t nr);
 void do_softirq(void);
+#else
+#define init_softirq() do{} while(0)
+#define register_softirq(x, y) do{ (void)&y;} while(0)
+#define fire_softirq(x) do { } while(0)
+#define do_softirq() do { } while(0)
+#endif
+
 #endif /* SOFTIRQ_H */

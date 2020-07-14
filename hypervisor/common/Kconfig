@@ -1,0 +1,7 @@
+menu "Common"
+config SOFTIRQ
+	bool "Enable softirq"
+	default y
+	help
+	  Enable/disable softirq support.
+endmenu #Common
