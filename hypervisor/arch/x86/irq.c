@@ -462,7 +462,6 @@ void init_default_irqs(uint16_t cpu_id)
 
 		/* we use ioapic only, disable legacy PIC */
 		disable_pic_irqs();
-		ioapic_setup_irqs();
 		init_softirq();
 	}
 }
