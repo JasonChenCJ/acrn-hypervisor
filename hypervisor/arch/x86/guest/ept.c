@@ -7,7 +7,7 @@
 #include <types.h>
 #include <errno.h>
 #include <x86/guest/vm.h>
-#include <x86/irq.h>
+#include <irq.h>
 #include <x86/pgtable.h>
 #include <x86/mmu.h>
 #include <x86/guest/ept.h>

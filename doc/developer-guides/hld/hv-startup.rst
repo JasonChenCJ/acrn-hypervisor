@@ -53,9 +53,9 @@ description for the flow:
    physical CPU, and to support CPU sharing.
 
 -  **Interrupt Init:** Initialize interrupt and exception for native HV
-   including IDT and ``do_IRQ`` infrastructure; a timer interrupt
+   including IDT and ``do_irq`` infrastructure; a timer interrupt
    framework is then built. The native/physical interrupts will go
-   through this ``do_IRQ`` infrastructure then distribute to special
+   through this ``do_irq`` infrastructure then distribute to special
    targets (HV or VMs).
 
 -  **Start AP:** BSP kicks ``INIT-SIPI-SIPI`` IPI sequence to start other

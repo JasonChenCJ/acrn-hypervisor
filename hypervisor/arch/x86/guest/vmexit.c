@@ -7,7 +7,7 @@
 #include <types.h>
 #include <errno.h>
 #include <x86/vmx.h>
-#include <x86/irq.h>
+#include <irq.h>
 #include <x86/mmu.h>
 #include <x86/guest/vcpu.h>
 #include <x86/guest/vm.h>

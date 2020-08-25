@@ -296,7 +296,7 @@ cases.)
 
 .. code-block:: c
 
-   do_IRQ -->
+   do_irq -->
        ...
        igb_msix_ring -->
            igbpoll -->

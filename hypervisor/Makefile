@@ -227,6 +227,7 @@ HW_S_SRCS += arch/x86/sched.S
 HW_C_SRCS += arch/x86/rdt.c
 HW_C_SRCS += arch/x86/sgx.c
 HW_C_SRCS += common/softirq.c
+HW_C_SRCS += common/irq.c
 HW_C_SRCS += common/schedule.c
 HW_C_SRCS += common/event.c
 ifeq ($(CONFIG_SCHED_NOOP),y)
