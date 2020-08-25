@@ -7,8 +7,7 @@
 #include <types.h>
 #include <errno.h>
 #include <x86/lib/bits.h>
-#include <x86/lib/atomic.h>
-#include <x86/irq.h>
+#include <irq.h>
 #include <x86/cpu.h>
 #include <x86/per_cpu.h>
 #include <x86/lapic.h>

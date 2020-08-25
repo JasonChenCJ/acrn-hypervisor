@@ -9,7 +9,7 @@
 #include <x86/guest/vm.h>
 #include <softirq.h>
 #include <ptdev.h>
-#include <x86/irq.h>
+#include <irq.h>
 #include <logmsg.h>
 #include <x86/vtd.h>
 #include <cycles.h>

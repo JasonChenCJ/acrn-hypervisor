@@ -4,7 +4,7 @@
  */
 
 #include <x86/guest/vm.h>
-#include <x86/irq.h>
+#include <irq.h>
 #include <errno.h>
 #include <logmsg.h>
 

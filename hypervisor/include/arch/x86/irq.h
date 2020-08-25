@@ -9,6 +9,7 @@
 
 #include <acrn_common.h>
 #include <util.h>
+#include <irq.h>
 #include <x86/lib/spinlock.h>
 
 /**
@@ -22,8 +23,6 @@
 
 #define NR_MAX_VECTOR		0xFFU
 #define VECTOR_INVALID		(NR_MAX_VECTOR + 1U)
-#define NR_IRQS			256U
-#define IRQ_INVALID		0xffffffffU
 
 /* # of NR_STATIC_MAPPINGS_1 entries for timer, vcpu notify, and PMI */
 #define NR_STATIC_MAPPINGS_1	3U
@@ -44,8 +43,6 @@
  */
 #define NR_STATIC_MAPPINGS	(NR_STATIC_MAPPINGS_1 + CONFIG_MAX_VM_NUM)
 
-#define HYPERVISOR_CALLBACK_VHM_VECTOR	0xF3U
-
 /* vectors range for dynamic allocation, usually for devices */
 #define VECTOR_DYNAMIC_START	0x20U
 #define VECTOR_DYNAMIC_END	0xDFU
@@ -64,9 +61,6 @@
  */
 #define POSTED_INTR_VECTOR	(VECTOR_FIXED_START + NR_STATIC_MAPPINGS_1)
 
-#define TIMER_IRQ		(NR_IRQS - 1U)
-#define NOTIFY_VCPU_IRQ		(NR_IRQS - 2U)
-#define PMI_IRQ			(NR_IRQS - 3U)
 /*
  * Starting IRQ for posted interrupts
  * # of CONFIG_MAX_VM_NUM (POSTED_INTR_IRQ ~ (POSTED_INTR_IRQ + CONFIG_MAX_VM_NUM - 1U))
@@ -74,21 +68,10 @@
  */
 #define POSTED_INTR_IRQ	(NR_IRQS - NR_STATIC_MAPPINGS_1 - CONFIG_MAX_VM_NUM)
 
-/* the maximum number of msi entry is 2048 according to PCI
- * local bus specification
- */
-#define MAX_MSI_ENTRY 0x800U
-
 #define DEFAULT_DEST_MODE	IOAPIC_RTE_DESTMODE_LOGICAL
 #define DEFAULT_DELIVERY_MODE	IOAPIC_RTE_DELMODE_LOPRI
 
-#define IRQ_ALLOC_BITMAP_SIZE	INT_DIV_ROUNDUP(NR_IRQS, 64U)
-
 #define INVALID_INTERRUPT_PIN	0xffffffffU
-
-#define IRQF_NONE	(0U)
-#define IRQF_LEVEL	(1U << 1U)	/* 1: level trigger; 0: edge trigger */
-#define IRQF_PT		(1U << 2U)	/* 1: for passthrough dev */
 
 struct acrn_vcpu;
 struct acrn_vm;
@@ -107,6 +90,15 @@ struct intr_excp_ctx {
 	uint64_t ss;
 };
 
+struct x86_irq_data {
+	uint32_t vector;	/**< assigned vector */
+#ifdef PROFILING_ON
+	uint64_t ctx_rip;
+	uint64_t ctx_rflags;
+	uint64_t ctx_cs;
+#endif
+};
+
 typedef void (*smp_call_func_t)(void *data);
 struct smp_call_info_data {
 	smp_call_func_t func;
@@ -116,18 +108,11 @@ struct smp_call_info_data {
 void smp_call_function(uint64_t mask, smp_call_func_t func, void *data);
 bool is_notification_nmi(const struct acrn_vm *vm);
 
-void init_default_irqs(uint16_t cpu_id);
-
-void dispatch_exception(struct intr_excp_ctx *ctx);
-
 void setup_notification(void);
 void setup_pi_notification(void);
 
 typedef void (*spurious_handler_t)(uint32_t vector);
 extern spurious_handler_t spurious_handler;
-
-uint32_t alloc_irq_num(uint32_t req_irq);
-uint32_t alloc_irq_vector(uint32_t irq);
 
 /* RFLAGS */
 #define HV_ARCH_VCPU_RFLAGS_IF              (1UL<<9U)
@@ -242,31 +227,6 @@ int32_t interrupt_window_vmexit_handler(struct acrn_vcpu *vcpu);
 int32_t external_interrupt_vmexit_handler(struct acrn_vcpu *vcpu);
 int32_t acrn_handle_pending_request(struct acrn_vcpu *vcpu);
 
-extern uint64_t irq_alloc_bitmap[IRQ_ALLOC_BITMAP_SIZE];
-
-typedef void (*irq_action_t)(uint32_t irq, void *priv_data);
-
-/**
- * @brief Interrupt descriptor
- *
- * Any field change in below required lock protection with irqsave
- */
-struct irq_desc {
-	uint32_t irq;		/**< index to irq_desc_base */
-	uint32_t vector;	/**< assigned vector */
-
-	irq_action_t action;	/**< callback registered from component */
-	void *priv_data;	/**< irq_action private data */
-	uint32_t flags;		/**< flags for trigger mode/ptdev */
-
-	spinlock_t lock;
-#ifdef PROFILING_ON
-	uint64_t ctx_rip;
-	uint64_t ctx_rflags;
-	uint64_t ctx_cs;
-#endif
-};
-
 /**
  * @defgroup phys_int_ext_apis Physical Interrupt External Interfaces
  *
@@ -275,45 +235,7 @@ struct irq_desc {
  * @{
  */
 
-/**
- * @brief Request an interrupt
- *
- * Request interrupt num if not specified, and register irq action for the
- * specified/allocated irq.
- *
- * @param[in]	req_irq	irq_num to request, if IRQ_INVALID, a free irq
- *		number will be allocated
- * @param[in]	action_fn	Function to be called when the IRQ occurs
- * @param[in]	priv_data	Private data for action function.
- * @param[in]	flags	Interrupt type flags, including:
- *			IRQF_NONE;
- *			IRQF_LEVEL - 1: level trigger; 0: edge trigger;
- *			IRQF_PT    - 1: for passthrough dev
- *
- * @retval >=0 on success
- * @retval IRQ_INVALID on failure
- */
-int32_t request_irq(uint32_t req_irq, irq_action_t action_fn, void *priv_data,
-			uint32_t flags);
-
-/**
- * @brief Free an interrupt
- *
- * Free irq num and unregister the irq action.
- *
- * @param[in]	irq	irq_num to be freed
- */
-void free_irq(uint32_t irq);
-
-/**
- * @brief Set interrupt trigger mode
- *
- * Set the irq trigger mode: edge-triggered or level-triggered
- *
- * @param[in]	irq	irq_num of interrupt to be set
- * @param[in]	is_level_triggered	Trigger mode to set
- */
-void set_irq_trigger_mode(uint32_t irq, bool is_level_triggered);
+uint32_t alloc_irq_vector(uint32_t irq);
 
 /**
  * @brief Get vector number of an interrupt from irq number
@@ -325,6 +247,26 @@ void set_irq_trigger_mode(uint32_t irq, bool is_level_triggered);
 uint32_t irq_to_vector(uint32_t irq);
 
 /**
+ * @brief Request an interrupt
+ */
+bool request_irq_arch(uint32_t irq);
+
+/**
+ * @brief Free an interrupt
+ *
+ * Free irq num and unregister the irq action.
+ *
+ * @param[in]	irq	irq_num to be freed
+ */
+void free_irq_arch(uint32_t irq);
+
+void pre_irq_arch(const struct irq_desc *desc);
+
+void eoi_irq_arch(const struct irq_desc *desc);
+
+void post_irq_arch(const struct irq_desc *desc);
+
+/**
  * @brief Dispatch interrupt
  *
  * To dispatch an interrupt, an action callback will be called if registered.
@@ -333,6 +275,8 @@ uint32_t irq_to_vector(uint32_t irq);
  */
 void dispatch_interrupt(const struct intr_excp_ctx *ctx);
 
+void dispatch_exception(struct intr_excp_ctx *ctx);
+
 /**
  * @brief Handle NMI
  *
@@ -340,7 +284,10 @@ void dispatch_interrupt(const struct intr_excp_ctx *ctx);
  *
  * @param ctx Pointer to interrupt exception context
  */
-void handle_nmi(__unused struct intr_excp_ctx *ctx);
+void handle_nmi(struct intr_excp_ctx *ctx);
+
+bool irq_allocated_arch(struct irq_desc *desc);
+void init_irq_descs_arch(struct irq_desc descs[]);
 
 /**
  * @brief Initialize interrupt
@@ -349,7 +296,7 @@ void handle_nmi(__unused struct intr_excp_ctx *ctx);
  *
  * @param[in]	pcpu_id The id of physical cpu to initialize
  */
-void init_interrupt(uint16_t pcpu_id);
+void init_interrupt_arch(uint16_t pcpu_id);
 
 /**
  * @}
