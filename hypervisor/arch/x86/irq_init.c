@@ -53,6 +53,6 @@ void init_interrupt_arch(uint16_t pcpu_id)
 	if (pcpu_id == BSP_CPU_ID) {
 		/* we use ioapic only, disable legacy PIC */
 		disable_pic_irqs();
-		ioapic_setup_irqs();
+		init_ioapic();
 	}
 }

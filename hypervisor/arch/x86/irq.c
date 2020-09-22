@@ -276,3 +276,8 @@ void init_irq_descs_arch(struct irq_desc descs[])
 		vector_to_irq[vr] = irq;
 	}
 }
+
+void setup_irqs_arch(void)
+{
+	ioapic_setup_irqs();
+}

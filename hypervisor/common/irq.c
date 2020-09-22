@@ -234,15 +234,19 @@ static void init_irq_descs(void)
 	}
 }
 
+static void init_irqs(void)
+{
+	init_irq_descs();
+	setup_irqs_arch();
+	init_softirq();
+}
+
 void init_interrupt(uint16_t pcpu_id)
 {
-	if (pcpu_id == BSP_CPU_ID) {
-		init_irq_descs();
-	}
 	init_interrupt_arch(pcpu_id);
 
 	if (pcpu_id == BSP_CPU_ID) {
-		init_softirq();
+		init_irqs();
 	}
 	CPU_IRQ_ENABLE();
 }
