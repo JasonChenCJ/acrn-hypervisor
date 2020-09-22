@@ -299,6 +299,8 @@ void init_irq_descs_arch(struct irq_desc descs[]);
  */
 void init_interrupt_arch(uint16_t pcpu_id);
 
+void setup_irqs_arch(void);
+
 /**
  * @}
  */

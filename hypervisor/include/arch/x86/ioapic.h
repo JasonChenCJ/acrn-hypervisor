@@ -20,6 +20,7 @@ struct ioapic_info {
 };
 
 void ioapic_setup_irqs(void);
+void init_ioapic();
 
 bool is_ioapic_irq(uint32_t irq);
 uint32_t gsi_to_ioapic_pin(uint32_t gsi);
