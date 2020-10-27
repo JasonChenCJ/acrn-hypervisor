@@ -77,7 +77,7 @@ static void sched_tick_handler(void *param)
 	struct sched_iorr_data *data;
 	struct thread_object *current;
 	uint16_t pcpu_id = get_pcpu_id();
-	uint64_t now = rdtsc();
+	uint64_t now = get_cpu_cycles();
 	uint64_t rflags;
 
 	obtain_schedule_lock(pcpu_id, &rflags);
@@ -116,7 +116,7 @@ int sched_iorr_init(struct sched_control *ctl)
 
 	/* The tick_timer is periodically */
 	initialize_timer(&iorr_ctl->tick_timer, sched_tick_handler, ctl,
-			rdtsc() + tick_period, TICK_MODE_PERIODIC, tick_period);
+			get_cpu_cycles() + tick_period, TICK_MODE_PERIODIC, tick_period);
 
 	if (add_timer(&iorr_ctl->tick_timer) < 0) {
 		pr_err("Failed to add schedule tick timer!");
@@ -146,7 +146,7 @@ static struct thread_object *sched_iorr_pick_next(struct sched_control *ctl)
 	struct thread_object *next = NULL;
 	struct thread_object *current = NULL;
 	struct sched_iorr_data *data;
-	uint64_t now = rdtsc();
+	uint64_t now = get_cpu_cycles();
 
 	current = ctl->curr_obj;
 	data = (struct sched_iorr_data *)current->data;

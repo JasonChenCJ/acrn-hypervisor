@@ -339,7 +339,7 @@ static int32_t profiling_generate_data(int32_t collector, uint32_t type)
 			clac();
 
 			/* populate the data header */
-			pkt_header.tsc = rdtsc();
+			pkt_header.tsc = get_cpu_cycles();
 			pkt_header.collector_id = collector;
 			pkt_header.cpu_id = get_pcpu_id();
 			pkt_header.data_type = 1U << type;
@@ -411,7 +411,7 @@ static int32_t profiling_generate_data(int32_t collector, uint32_t type)
 		clac();
 
 		/* populate the data header */
-		pkt_header.tsc = rdtsc();
+		pkt_header.tsc = get_cpu_cycles();
 		pkt_header.collector_id = collector;
 		pkt_header.cpu_id = get_pcpu_id();
 		pkt_header.data_type = (uint16_t)type;
@@ -1308,7 +1308,7 @@ void profiling_vmenter_handler(__unused struct acrn_vcpu *vcpu)
 			((socwatch_collection_switch &
 				(1UL << (uint64_t)SOCWATCH_VM_SWITCH_TRACING)) > 0UL))) {
 
-		get_cpu_var(profiling_info.vm_info).vmenter_tsc = rdtsc();
+		get_cpu_var(profiling_info.vm_info).vmenter_tsc = get_cpu_cycles();
 	}
 }
 
@@ -1324,7 +1324,7 @@ void profiling_pre_vmexit_handler(struct acrn_vcpu *vcpu)
 	if ((get_cpu_var(profiling_info.s_state).pmu_state == PMU_RUNNING) ||
 		(get_cpu_var(profiling_info.soc_state) == SW_RUNNING)) {
 
-		get_cpu_var(profiling_info.vm_info).vmexit_tsc = rdtsc();
+		get_cpu_var(profiling_info.vm_info).vmexit_tsc = get_cpu_cycles();
 		get_cpu_var(profiling_info.vm_info).vmexit_reason
 			= exit_reason;
 		if (exit_reason == VMX_EXIT_REASON_EXTERNAL_INTERRUPT) {

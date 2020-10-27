@@ -11,6 +11,7 @@
 #include <per_cpu.h>
 #include <cpu_caps.h>
 #include <lapic.h>
+#include <udelay.h>
 
 union lapic_base_msr {
 	uint64_t value;
