@@ -51,7 +51,7 @@ static inline void trace_put(uint16_t cpu_id, uint32_t evid, uint32_t n_data, st
 {
 	struct shared_buf *sbuf = per_cpu(sbuf, cpu_id)[ACRN_TRACE];
 
-	entry->tsc = rdtsc();
+	entry->tsc = get_cpu_cycles();
 	entry->id = evid;
 	entry->n_data = (uint8_t)n_data;
 	entry->cpu = (uint8_t)cpu_id;

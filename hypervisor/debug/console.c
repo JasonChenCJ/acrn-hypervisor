@@ -16,6 +16,7 @@
 #include <console.h>
 #include <multiboot.h>
 #include <dbg_cmd.h>
+#include <cycles.h>
 
 struct hv_timer console_timer;
 
@@ -159,13 +160,13 @@ static void console_timer_callback(__unused void *data)
 
 void console_setup_timer(void)
 {
-	uint64_t period_in_cycle, fire_tsc;
+	uint64_t period_in_cycle, deadline;
 
 	period_in_cycle = CYCLES_PER_MS * CONSOLE_KICK_TIMER_TIMEOUT;
-	fire_tsc = rdtsc() + period_in_cycle;
+	deadline = get_cpu_cycles() + period_in_cycle;
 	initialize_timer(&console_timer,
 			console_timer_callback, NULL,
-			fire_tsc, TICK_MODE_PERIODIC, period_in_cycle);
+			deadline, TICK_MODE_PERIODIC, period_in_cycle);
 
 	/* Start an periodic timer */
 	if (add_timer(&console_timer) != 0) {

@@ -32,6 +32,7 @@
 #include <vpci.h>
 #include <pci_dev.h>
 #include <logmsg.h>
+#include <udelay.h>
 
 #include "vpci_priv.h"
 
