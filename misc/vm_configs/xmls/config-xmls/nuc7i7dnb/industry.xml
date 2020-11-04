@@ -124,9 +124,9 @@
         <size desc="SGX EPC section size in Bytes, must be page aligned">0</size>
     </epc_section>
     <legacy_vuart id="0">
-        <type configurable="0" desc="vCOM1 type">VUART_LEGACY_PIO</type>
-        <base desc="vUART0 (A.K.A COM1) enabling switch. Enable by exposing its base address, disable by returning invalid base address.">COM1_BASE</base>
-        <irq configurable="0" desc="vCOM1 irq">COM1_IRQ</irq>
+        <type configurable="0" desc="vCOM2 type">VUART_LEGACY_PIO</type>
+        <base desc="vUART0 (A.K.A COM2) enabling switch. Enable by exposing its base address, disable by returning invalid base address.">COM2_BASE</base>
+        <irq configurable="0" desc="vCOM2 irq">COM2_IRQ</irq>
     </legacy_vuart>
     <legacy_vuart id="1">
         <type configurable="0" desc="vCOM2 type">VUART_LEGACY_PIO</type>
