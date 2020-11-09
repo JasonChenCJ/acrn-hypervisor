@@ -116,7 +116,7 @@ int sched_iorr_init(struct sched_control *ctl)
 
 	/* The tick_timer is periodically */
 	initialize_timer(&iorr_ctl->tick_timer, sched_tick_handler, ctl,
-			get_cpu_cycles() + tick_period, TICK_MODE_PERIODIC, tick_period);
+			get_cpu_cycles() + tick_period, tick_period);
 
 	if (add_timer(&iorr_ctl->tick_timer) < 0) {
 		pr_err("Failed to add schedule tick timer!");

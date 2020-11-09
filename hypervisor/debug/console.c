@@ -166,7 +166,7 @@ void console_setup_timer(void)
 	deadline = get_cpu_cycles() + period_in_cycle;
 	initialize_timer(&console_timer,
 			console_timer_callback, NULL,
-			deadline, TICK_MODE_PERIODIC, period_in_cycle);
+			deadline, period_in_cycle);
 
 	/* Start an periodic timer */
 	if (add_timer(&console_timer) != 0) {

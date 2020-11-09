@@ -104,7 +104,7 @@ struct ptirq_remapping_info *ptirq_dequeue_softirq(uint16_t pcpu_id)
 		list_del_init(&entry->softirq_node);
 
 		/* if sos vm, just dequeue, if uos, check delay timer */
-		if (is_sos_vm(entry->vm) || timer_expired(&entry->intr_delay_timer)) {
+		if (is_sos_vm(entry->vm) || timer_expired(&entry->intr_delay_timer, get_cpu_cycles(), NULL)) {
 			break;
 		} else {
 			/* add it into timer list; dequeue next one */
@@ -133,7 +133,7 @@ struct ptirq_remapping_info *ptirq_alloc_entry(struct acrn_vm *vm, uint32_t intr
 
 		INIT_LIST_HEAD(&entry->softirq_node);
 
-		initialize_timer(&entry->intr_delay_timer, ptirq_intr_delay_callback, entry, 0UL, 0, 0UL);
+		initialize_timer(&entry->intr_delay_timer, ptirq_intr_delay_callback, entry, 0UL, 0UL);
 
 		entry->active = false;
 	} else {
@@ -180,7 +180,7 @@ static void ptirq_interrupt_handler(__unused uint32_t irq, void *data)
 				entry->intr_delay_timer.timeout = get_cpu_cycles() + entry->vm->intr_inject_delay_delta;
 			}
 		} else {
-			entry->intr_delay_timer.timeout = 0UL;
+			update_timer(&entry->intr_delay_timer, 0UL, 0UL);
 		}
 	}
 
