@@ -7,7 +7,6 @@
 #include <types.h>
 #include <errno.h>
 #include <softirq.h>
-#include <cpuid.h>
 #include <trace.h>
 #include <cycles.h>
 #include <hw_timer.h>
@@ -15,7 +14,31 @@
 #define MAX_TIMER_ACTIONS	32U
 #define MIN_TIMER_PERIOD_US	500U
 
-static void run_timer(const struct hv_timer *timer)
+bool timer_expired(const struct hv_timer *timer, uint64_t now, uint64_t *delta)
+{
+	bool ret;
+	uint64_t delt = 0UL;
+
+	if  ((timer->timeout == 0UL) || (now >= timer->timeout)) {
+		ret = true;
+	} else {
+		ret = false;
+		delt = timer->timeout - now;
+	}
+
+	if (delta != NULL) {
+		*delta = delt;
+	}
+
+	return ret;
+}
+
+bool timer_is_started(const struct hv_timer *timer)
+{
+	return (!list_empty(&timer->node));
+}
+
+static void run_timer(struct hv_timer *timer)
 {
 	/* deadline = 0 means stop timer, we should skip */
 	if ((timer->func != NULL) && (timer->timeout != 0UL)) {
@@ -148,6 +171,8 @@ static void timer_softirq(uint16_t pcpu_id)
 				/* update periodic timer fire tsc */
 				timer->timeout += timer->period_in_cycle;
 				(void)local_add_timer(cpu_timer, timer);
+			} else {
+				timer->timeout = 0UL;
 			}
 		} else {
 			break;
@@ -156,6 +181,39 @@ static void timer_softirq(uint16_t pcpu_id)
 
 	/* update nearest timer */
 	update_physical_timer(cpu_timer);
+}
+
+void initialize_timer(struct hv_timer *timer,
+			timer_handle_t func, void *priv_data,
+			uint64_t timeout, uint64_t period_in_cycle)
+{
+	if (timer != NULL) {
+		timer->func = func;
+		timer->priv_data = priv_data;
+		timer->timeout = timeout;
+		if (period_in_cycle > 0UL) {
+			timer->mode = TICK_MODE_PERIODIC;
+			timer->period_in_cycle = period_in_cycle;
+		} else {
+			timer->mode = TICK_MODE_ONESHOT;
+			timer->period_in_cycle = 0UL;
+		}
+		INIT_LIST_HEAD(&timer->node);
+	}
+}
+
+void update_timer(struct hv_timer *timer, uint64_t timeout, uint64_t period_in_cycle)
+{
+	if (timer != NULL) {
+		timer->timeout = timeout;
+		if (period_in_cycle > 0UL) {
+			timer->mode = TICK_MODE_PERIODIC;
+			timer->period_in_cycle = period_in_cycle;
+		} else {
+			timer->mode = TICK_MODE_ONESHOT;
+			timer->period_in_cycle = 0UL;
+		}
+	}
 }
 
 void timer_init(void)

@@ -258,9 +258,7 @@ static void vlapic_init_timer(struct acrn_vlapic *vlapic)
 	vtimer = &vlapic->vtimer;
 	(void)memset(vtimer, 0U, sizeof(struct vlapic_timer));
 
-	initialize_timer(&vtimer->timer,
-			vlapic_timer_expired, vlapic2vcpu(vlapic),
-			0UL, 0, 0UL);
+	initialize_timer(&vtimer->timer, vlapic_timer_expired, vlapic2vcpu(vlapic), 0UL, 0UL);
 }
 
 /**
@@ -272,16 +270,14 @@ static void vlapic_reset_timer(struct acrn_vlapic *vlapic)
 
 	timer = &vlapic->vtimer.timer;
 	del_timer(timer);
-	timer->mode = TICK_MODE_ONESHOT;
-	timer->timeout = 0UL;
-	timer->period_in_cycle = 0UL;
+	update_timer(timer, 0UL, 0UL);
 }
 
 static bool
 set_expiration(struct acrn_vlapic *vlapic)
 {
 	uint64_t now = get_cpu_cycles();
-	uint64_t delta;
+	uint64_t delta, timeout, period_in_cycle = 0UL;
 	struct vlapic_timer *vtimer;
 	struct hv_timer *timer;
 	uint32_t tmicr, divisor_shift;
@@ -298,9 +294,10 @@ set_expiration(struct acrn_vlapic *vlapic)
 		timer = &vtimer->timer;
 
 		if (vlapic_lvtt_period(vlapic)) {
-			timer->period_in_cycle = delta;
+			period_in_cycle = delta;
 		}
-		timer->timeout = now + delta;
+		timeout = now + delta;
+		update_timer(timer, timeout, period_in_cycle);
 		ret = true;
 	}
 	return ret;
@@ -320,10 +317,7 @@ static void vlapic_update_lvtt(struct acrn_vlapic *vlapic,
 		 * the timer mode disarms the local APIC timer.
 		 */
 		del_timer(timer);
-		timer->mode = (timer_mode == APIC_LVTT_TM_PERIODIC) ?
-				TICK_MODE_PERIODIC: TICK_MODE_ONESHOT;
-		timer->timeout = 0UL;
-		timer->period_in_cycle = 0UL;
+		update_timer(timer, 0UL, 0UL);
 
 		vtimer->mode = timer_mode;
 	}
@@ -331,19 +325,17 @@ static void vlapic_update_lvtt(struct acrn_vlapic *vlapic,
 
 static uint32_t vlapic_get_ccr(const struct acrn_vlapic *vlapic)
 {
-	uint64_t now = get_cpu_cycles();
+	uint64_t shifted_delta;
 	uint32_t remain_count = 0U;
 	const struct vlapic_timer *vtimer;
 
 	vtimer = &vlapic->vtimer;
 
 	if ((vtimer->tmicr != 0U) && (!vlapic_lvtt_tsc_deadline(vlapic))) {
-		uint64_t deadline = vtimer->timer.timeout;
-
-		if (now < deadline) {
+		if (!timer_expired(&vtimer->timer, get_cpu_cycles(), &shifted_delta)) {
 			uint32_t divisor_shift = vtimer->divisor_shift;
-			uint64_t shifted_delta =
-				(deadline - now) >> divisor_shift;
+
+			shifted_delta = shifted_delta >> divisor_shift;
 			remain_count = (uint32_t)shifted_delta;
 		}
 	}
@@ -403,7 +395,7 @@ uint64_t vlapic_get_tsc_deadline_msr(const struct acrn_vlapic *vlapic)
 	} else if (!vlapic_lvtt_tsc_deadline(vlapic)) {
 		ret = 0UL;
 	} else {
-		ret = (vlapic->vtimer.timer.timeout == 0UL) ? 0UL :
+		ret = timer_expired(&vlapic->vtimer.timer, get_cpu_cycles(), NULL) ? 0UL :
 			vcpu_get_guest_msr(vcpu, MSR_IA32_TSC_DEADLINE);
 	}
 
@@ -442,14 +434,14 @@ void vlapic_set_tsc_deadline_msr(struct acrn_vlapic *vlapic, uint64_t val_arg)
 		if (val != 0UL) {
 			/* transfer guest tsc to host tsc */
 			val -= exec_vmread64(VMX_TSC_OFFSET_FULL);
-			timer->timeout = val;
+			update_timer(timer, val, 0UL);
 			/* vlapic_init_timer has been called,
 			 * and timer->timeout is not 0, here
 			 * add_timer should not return error
 			 */
 			(void)add_timer(timer);
 		} else {
-			timer->timeout = 0UL;
+			update_timer(timer, 0UL, 0UL);
 		}
 	} else {
 		/* No action required */
@@ -2036,10 +2028,6 @@ static void vlapic_timer_expired(void *data)
 	/* inject vcpu timer interrupt if not masked */
 	if (!vlapic_lvtt_masked(vlapic)) {
 		vlapic_set_intr(vcpu, lapic->lvt[APIC_LVT_TIMER].v & APIC_LVTT_VECTOR, LAPIC_TRIG_EDGE);
-	}
-
-	if (!vlapic_lvtt_period(vlapic)) {
-		vlapic->vtimer.timer.timeout = 0UL;
 	}
 }
 
