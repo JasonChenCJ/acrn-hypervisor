@@ -147,7 +147,7 @@ assembler.
 Compliant example::
 
     #include <types.h>
-    #include <spinlock.h>
+    #include <x86/lib/spinlock.h>
 
     .macro asm_showcase_mov
             movl    $0x1, %eax
@@ -163,7 +163,7 @@ Compliant example::
 
        .end
 
-       #include <spinlock.h>
+       #include <x86/lib/spinlock.h>
 
        .macro asm_showcase_mov
                movl    $0x1, %eax

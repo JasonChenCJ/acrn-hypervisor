@@ -7,7 +7,7 @@
 #define IVSHMEM_CFG_H
 
 #include <ivshmem.h>
-#include <pgtable.h>
+#include <x86/pgtable.h>
 
 #define IVSHMEM_SHM_REGION_0	"hv:/shm_region_0"
 

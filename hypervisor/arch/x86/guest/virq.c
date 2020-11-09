@@ -6,14 +6,14 @@
 
 #include <types.h>
 #include <errno.h>
-#include <bits.h>
-#include <irq.h>
-#include <lapic.h>
-#include <mmu.h>
-#include <vmx.h>
-#include <vcpu.h>
-#include <vmcs.h>
-#include <vm.h>
+#include <x86/lib/bits.h>
+#include <x86/irq.h>
+#include <x86/lapic.h>
+#include <x86/mmu.h>
+#include <x86/vmx.h>
+#include <x86/guest/vcpu.h>
+#include <x86/guest/vmcs.h>
+#include <x86/guest/vm.h>
 #include <trace.h>
 #include <logmsg.h>
 

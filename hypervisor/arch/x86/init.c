@@ -5,15 +5,15 @@
  */
 
 #include <types.h>
-#include <init.h>
+#include <x86/init.h>
 #include <console.h>
-#include <per_cpu.h>
+#include <x86/per_cpu.h>
 #include <shell.h>
-#include <vmx.h>
-#include <vm.h>
+#include <x86/vmx.h>
+#include <x86/guest/vm.h>
 #include <logmsg.h>
-#include <seed.h>
-#include <ld_sym.h>
+#include <x86/seed.h>
+#include <x86/boot/ld_sym.h>
 #include <boot.h>
 
 /* Push sp magic to top of stack for call trace */

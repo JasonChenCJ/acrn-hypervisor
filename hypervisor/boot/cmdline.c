@@ -7,7 +7,7 @@
 #include <types.h>
 #include <errno.h>
 #include <boot.h>
-#include <pgtable.h>
+#include <x86/pgtable.h>
 #include <dbg_cmd.h>
 
 void parse_hv_cmdline(void)

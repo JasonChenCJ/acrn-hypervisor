@@ -6,7 +6,7 @@
 
 #ifndef SCHEDULE_H
 #define SCHEDULE_H
-#include <spinlock.h>
+#include <x86/lib/spinlock.h>
 #include <list.h>
 #include <timer.h>
 

@@ -8,7 +8,7 @@
 #define INTR_LAPIC_H
 
 #include <types.h>
-#include <apicreg.h>
+#include <x86/apicreg.h>
 
 /* intr_lapic_icr_delivery_mode */
 #define INTR_LAPIC_ICR_FIXED    0x0U

@@ -7,4 +7,5 @@
 #ifndef VBAR_BASE_H_
 #define VBAR_BASE_H_
 
+
 #endif /* VBAR_BASE_H_ */

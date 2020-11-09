@@ -5,11 +5,11 @@
  */
 
 #include <types.h>
-#include <msr.h>
+#include <x86/msr.h>
 #include <softirq.h>
-#include <irq.h>
-#include <apicreg.h>
-#include <cpu.h>
+#include <x86/irq.h>
+#include <x86/apicreg.h>
+#include <x86/cpu.h>
 #include <trace.h>
 
 /* run in interrupt context */

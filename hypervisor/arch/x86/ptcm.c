@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 #include <types.h>
-#include <bits.h>
+#include <x86/lib/bits.h>
+#include <x86/mmu.h>
+#include <x86/ptcm.h>
 #include <logmsg.h>
 #include <misc_cfg.h>
-#include <mmu.h>
-#include <ptcm.h>
 
 
 uint64_t psram_area_bottom;

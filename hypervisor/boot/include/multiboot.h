@@ -39,7 +39,7 @@
 #define ACPI_MODULE_SIZE		MEM_1M
 
 #ifndef ASSEMBLER
-#include <zeropage.h>
+#include <x86/zeropage.h>
 
 struct multiboot_mmap {
 	uint32_t size;

@@ -16,9 +16,9 @@
  * Version: 2
  */
 
-#include <board.h>
-#include <vtd.h>
-#include <msr.h>
+#include <x86/board.h>
+#include <x86/vtd.h>
+#include <x86/msr.h>
 #include <pci.h>
 #include <misc_cfg.h>
 

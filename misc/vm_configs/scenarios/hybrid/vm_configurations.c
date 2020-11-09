@@ -3,9 +3,9 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#include <vm_config.h>
+#include <x86/vm_config.h>
 #include <vuart.h>
-#include <pci_dev.h>
+#include <x86/pci_dev.h>
 
 extern struct acrn_vm_pci_dev_config sos_pci_devs[CONFIG_MAX_PCI_DEV_NUM];
 

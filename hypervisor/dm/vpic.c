@@ -27,12 +27,12 @@
 
 #define pr_prefix	"vpic: "
 
-#include <vm.h>
-#include <irq.h>
-#include <assign.h>
-#include <spinlock.h>
+#include <x86/guest/vm.h>
+#include <x86/irq.h>
+#include <x86/guest/assign.h>
+#include <x86/lib/spinlock.h>
 #include <logmsg.h>
-#include <ioapic.h>
+#include <x86/ioapic.h>
 
 #define DBG_LEVEL_PIC	6U
 
