@@ -9,7 +9,7 @@
 
 #include <acrn_common.h>
 #include <util.h>
-#include <spinlock.h>
+#include <x86/lib/spinlock.h>
 
 /**
  * @file arch/x86/irq.h

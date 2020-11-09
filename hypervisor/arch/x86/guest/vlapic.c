@@ -31,17 +31,17 @@
 
 #include <types.h>
 #include <errno.h>
-#include <bits.h>
-#include <atomic.h>
-#include <per_cpu.h>
-#include <pgtable.h>
-#include <lapic.h>
-#include <vmcs.h>
-#include <vlapic.h>
+#include <x86/lib/bits.h>
+#include <x86/lib/atomic.h>
+#include <x86/per_cpu.h>
+#include <x86/pgtable.h>
+#include <x86/lapic.h>
+#include <x86/guest/vmcs.h>
+#include <x86/guest/vlapic.h>
 #include <ptdev.h>
-#include <vmx.h>
-#include <vm.h>
-#include <ept.h>
+#include <x86/vmx.h>
+#include <x86/guest/vm.h>
+#include <x86/guest/ept.h>
 #include <trace.h>
 #include <logmsg.h>
 #include <cycles.h>

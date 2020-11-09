@@ -6,10 +6,10 @@
 
 #include <types.h>
 #include <util.h>
-#include <io.h>
-#include <cpuid.h>
+#include <x86/io.h>
+#include <x86/cpuid.h>
 #include <trace.h>
-#include <cpu_caps.h>
+#include <x86/cpu_caps.h>
 
 #define CAL_MS		    10U
 

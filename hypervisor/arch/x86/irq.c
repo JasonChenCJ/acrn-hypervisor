@@ -6,18 +6,18 @@
 
 #include <types.h>
 #include <errno.h>
-#include <bits.h>
-#include <spinlock.h>
-#include <per_cpu.h>
-#include <io.h>
-#include <irq.h>
-#include <idt.h>
-#include <ioapic.h>
-#include <lapic.h>
+#include <x86/lib/bits.h>
+#include <x86/lib/spinlock.h>
+#include <x86/per_cpu.h>
+#include <x86/io.h>
+#include <x86/irq.h>
+#include <x86/idt.h>
+#include <x86/ioapic.h>
+#include <x86/lapic.h>
 #include <softirq.h>
 #include <dump.h>
 #include <logmsg.h>
-#include <vmx.h>
+#include <x86/vmx.h>
 
 static spinlock_t irq_alloc_spinlock = { .head = 0U, .tail = 0U, };
 

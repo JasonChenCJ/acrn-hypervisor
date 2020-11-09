@@ -7,7 +7,7 @@
 #ifndef PTDEV_H
 #define PTDEV_H
 #include <list.h>
-#include <spinlock.h>
+#include <x86/lib/spinlock.h>
 #include <timer.h>
 
 

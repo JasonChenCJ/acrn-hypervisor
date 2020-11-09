@@ -5,12 +5,12 @@
  */
 
 #include <types.h>
-#include <bits.h>
-#include <msr.h>
-#include <cpu.h>
-#include <per_cpu.h>
-#include <cpu_caps.h>
-#include <lapic.h>
+#include <x86/lib/bits.h>
+#include <x86/msr.h>
+#include <x86/cpu.h>
+#include <x86/per_cpu.h>
+#include <x86/cpu_caps.h>
+#include <x86/lapic.h>
 #include <udelay.h>
 
 union lapic_base_msr {

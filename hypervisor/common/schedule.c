@@ -6,10 +6,10 @@
 
 #include <rtl.h>
 #include <list.h>
-#include <bits.h>
-#include <cpu.h>
-#include <per_cpu.h>
-#include <lapic.h>
+#include <x86/lib/bits.h>
+#include <x86/cpu.h>
+#include <x86/per_cpu.h>
+#include <x86/lapic.h>
 #include <schedule.h>
 #include <sprintf.h>
 
