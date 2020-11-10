@@ -177,6 +177,12 @@ void ioapic_set_rte(uint32_t irq, union ioapic_rte rte)
 	addr = gsi_to_ioapic_base(irq);
 	ioapic_set_rte_entry(addr, gsi_table_data[irq].ioapic_info.pin, rte);
 
+	if (rte.bits.trigger_mode == IOAPIC_RTE_TRGRMODE_LEVEL) {
+		set_irq_trigger_mode(irq, true);
+	} else {
+		set_irq_trigger_mode(irq, false);
+	}
+
 	dev_dbg(DBG_LEVEL_IRQ, "GSI: irq:%d pin:%hhu rte:%lx",
 		irq, gsi_table_data[irq].ioapic_info.pin,
 		rte.full);
