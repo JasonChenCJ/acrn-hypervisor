@@ -7,7 +7,6 @@
 #include <types.h>
 #include <x86/msr.h>
 #include <x86/page.h>
-#include <x86/cpufeatures.h>
 #include <x86/cpuid.h>
 #include <x86/cpu.h>
 #include <x86/per_cpu.h>
@@ -237,6 +236,27 @@ static uint64_t get_address_mask(uint8_t limit)
 	return ((1UL << limit) - 1UL) & PAGE_MASK;
 }
 
+static void init_pcpu_model_name(void)
+{
+	cpuid_subleaf(CPUID_EXTEND_FUNCTION_2, 0x0U,
+		(uint32_t *)(boot_cpu_data.model_name),
+		(uint32_t *)(&boot_cpu_data.model_name[4]),
+		(uint32_t *)(&boot_cpu_data.model_name[8]),
+		(uint32_t *)(&boot_cpu_data.model_name[12]));
+	cpuid_subleaf(CPUID_EXTEND_FUNCTION_3, 0x0U,
+		(uint32_t *)(&boot_cpu_data.model_name[16]),
+		(uint32_t *)(&boot_cpu_data.model_name[20]),
+		(uint32_t *)(&boot_cpu_data.model_name[24]),
+		(uint32_t *)(&boot_cpu_data.model_name[28]));
+	cpuid_subleaf(CPUID_EXTEND_FUNCTION_4, 0x0U,
+		(uint32_t *)(&boot_cpu_data.model_name[32]),
+		(uint32_t *)(&boot_cpu_data.model_name[36]),
+		(uint32_t *)(&boot_cpu_data.model_name[40]),
+		(uint32_t *)(&boot_cpu_data.model_name[44]));
+
+	boot_cpu_data.model_name[48] = '\0';
+}
+
 void init_pcpu_capabilities(void)
 {
 	uint32_t eax, unused;
@@ -301,6 +321,7 @@ void init_pcpu_capabilities(void)
 	}
 
 	detect_pcpu_cap();
+	init_pcpu_model_name();
 }
 
 static bool is_ept_supported(void)
@@ -326,27 +347,6 @@ bool pcpu_has_vmx_ept_cap(uint32_t bit_mask)
 bool pcpu_has_vmx_vpid_cap(uint32_t bit_mask)
 {
 	return ((cpu_caps.vmx_vpid & bit_mask) != 0U);
-}
-
-void init_pcpu_model_name(void)
-{
-	cpuid_subleaf(CPUID_EXTEND_FUNCTION_2, 0x0U,
-		(uint32_t *)(boot_cpu_data.model_name),
-		(uint32_t *)(&boot_cpu_data.model_name[4]),
-		(uint32_t *)(&boot_cpu_data.model_name[8]),
-		(uint32_t *)(&boot_cpu_data.model_name[12]));
-	cpuid_subleaf(CPUID_EXTEND_FUNCTION_3, 0x0U,
-		(uint32_t *)(&boot_cpu_data.model_name[16]),
-		(uint32_t *)(&boot_cpu_data.model_name[20]),
-		(uint32_t *)(&boot_cpu_data.model_name[24]),
-		(uint32_t *)(&boot_cpu_data.model_name[28]));
-	cpuid_subleaf(CPUID_EXTEND_FUNCTION_4, 0x0U,
-		(uint32_t *)(&boot_cpu_data.model_name[32]),
-		(uint32_t *)(&boot_cpu_data.model_name[36]),
-		(uint32_t *)(&boot_cpu_data.model_name[40]),
-		(uint32_t *)(&boot_cpu_data.model_name[44]));
-
-	boot_cpu_data.model_name[48] = '\0';
 }
 
 static inline bool is_vmx_disabled(void)

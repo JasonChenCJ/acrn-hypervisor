@@ -6,7 +6,6 @@
 
 #include <types.h>
 #include <errno.h>
-#include <x86/cpufeatures.h>
 #include <x86/cpu_caps.h>
 #include <x86/sgx.h>
 #include <x86/cpuid.h>

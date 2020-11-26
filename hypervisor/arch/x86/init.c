@@ -17,7 +17,6 @@
 #include <vpci.h>
 #include <ivshmem.h>
 #include <x86/init.h>
-#include <x86/cpufeatures.h>
 #include <x86/cpu_caps.h>
 #include <x86/per_cpu.h>
 #include <x86/lapic.h>
@@ -279,8 +278,6 @@ void init_primary_pcpu(void)
 	if (detect_hardware_support() != 0) {
 		panic("hardware not support!");
 	}
-
-	init_pcpu_model_name();
 
 	load_pcpu_state_data();
 
