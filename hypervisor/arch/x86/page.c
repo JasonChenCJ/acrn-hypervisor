@@ -5,7 +5,6 @@
  */
 #include <types.h>
 #include <rtl.h>
-#include <x86/cpufeatures.h>
 #include <x86/pgtable.h>
 #include <x86/page.h>
 #include <x86/mmu.h>

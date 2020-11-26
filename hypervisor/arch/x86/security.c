@@ -6,7 +6,6 @@
 
 #include <types.h>
 #include <x86/msr.h>
-#include <x86/cpufeatures.h>
 #include <x86/cpu.h>
 #include <x86/per_cpu.h>
 #include <x86/cpu_caps.h>

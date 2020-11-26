@@ -17,7 +17,6 @@
 #include <x86/vtd.h>
 #include <x86/guest/vmexit.h>
 #include <x86/pgtable.h>
-#include <x86/cpufeatures.h>
 #include <trace.h>
 #include <logmsg.h>
 

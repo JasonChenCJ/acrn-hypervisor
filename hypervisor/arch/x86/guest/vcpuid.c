@@ -10,7 +10,6 @@
 #include <x86/guest/vcpu.h>
 #include <x86/guest/vm.h>
 #include <x86/cpuid.h>
-#include <x86/cpufeatures.h>
 #include <x86/vmx.h>
 #include <x86/sgx.h>
 #include <logmsg.h>

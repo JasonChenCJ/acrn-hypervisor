@@ -15,7 +15,6 @@
 #include <x86/pgtable.h>
 #include <x86/per_cpu.h>
 #include <x86/cpu_caps.h>
-#include <x86/cpufeatures.h>
 #include <x86/guest/vmexit.h>
 #include <logmsg.h>
 
