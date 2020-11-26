@@ -39,7 +39,34 @@ static struct cpu_capability {
 	uint32_t core_caps;	/* value of MSR_IA32_CORE_CAPABLITIES */
 } cpu_caps;
 
+struct cpuinfo_x86 {
+	/* SDM 2-2 Vol.4 Table 2-1 uses DisplayFamily_DisplayModel to
+	 * distinguish Processor Families/Processor Number Series.
+	 */
+	uint8_t displayfamily, displaymodel;
+	uint8_t virt_bits;
+	uint8_t phys_bits;
+	uint32_t cpuid_level;
+	uint32_t extended_cpuid_level;
+	uint32_t cpuid_leaves[FEATURE_WORDS];
+	char model_name[64];
+};
+
 static struct cpuinfo_x86 boot_cpu_data;
+
+bool pcpu_set_cap(uint32_t bit)
+{
+	uint32_t feat_idx = bit >> 5U;
+	uint32_t feat_bit = bit & 0x1fU;
+	bool ret = false;
+
+	if (feat_idx < FEATURE_WORDS) {
+		boot_cpu_data.cpuid_leaves[feat_idx] |= (1U << feat_bit);
+		ret = true;
+	}
+
+	return ret;
+}
 
 bool pcpu_has_cap(uint32_t bit)
 {
@@ -61,16 +88,46 @@ bool has_monitor_cap(void)
 	bool ret = false;
 
 	if (pcpu_has_cap(X86_FEATURE_MONITOR)) {
-		/* don't use monitor for CPU (family: 0x6 model: 0x5c)
+		/* don't use monitor for APL CPU (family: 0x6 model: 0x5c)
 		 * in hypervisor, but still expose it to the guests and
 		 * let them handle it correctly
 		 */
-		if (!is_apl_platform()) {
+		if (!((pcpu_family_id() == 0x6U) && (pcpu_model_id() == 0x5cU))) {
 			ret = true;
 		}
 	}
 
 	return ret;
+}
+
+uint8_t pcpu_physaddr_bits(void)
+{
+	return boot_cpu_data.phys_bits;
+}
+
+uint8_t pcpu_virtaddr_bits(void)
+{
+	return boot_cpu_data.virt_bits;
+}
+
+uint32_t pcpu_cpuid_level(void)
+{
+	return boot_cpu_data.cpuid_level;
+}
+
+uint8_t pcpu_family_id(void)
+{
+	return boot_cpu_data.displayfamily;
+}
+
+uint8_t pcpu_model_id(void)
+{
+	return boot_cpu_data.displaymodel;
+}
+
+char *pcpu_model_name(void)
+{
+	return boot_cpu_data.model_name;
 }
 
 static inline bool is_fast_string_erms_supported_and_enabled(void)
@@ -100,17 +157,6 @@ static bool is_ctrl_setting_allowed(uint64_t msr_val, uint32_t ctrl)
 	 *   only if bit 32+X in msr_val is 1
 	 */
 	return ((((uint32_t)(msr_val >> 32UL)) & ctrl) == ctrl);
-}
-
-bool is_apl_platform(void)
-{
-	bool ret = false;
-
-	if ((boot_cpu_data.displayfamily == 0x6U) && (boot_cpu_data.displaymodel == 0x5cU)) {
-		ret = true;
-	}
-
-	return ret;
 }
 
 bool has_core_cap(uint32_t bit_mask)
@@ -231,11 +277,6 @@ static void detect_pcpu_cap(void)
 	detect_core_caps();
 }
 
-static uint64_t get_address_mask(uint8_t limit)
-{
-	return ((1UL << limit) - 1UL) & PAGE_MASK;
-}
-
 static void init_pcpu_model_name(void)
 {
 	cpuid_subleaf(CPUID_EXTEND_FUNCTION_2, 0x0U,
@@ -316,8 +357,6 @@ void init_pcpu_capabilities(void)
 			 */
 			boot_cpu_data.virt_bits = (uint8_t)((eax >> 8U) & 0xffU);
 			boot_cpu_data.phys_bits = (uint8_t)(eax & 0xffU);
-			boot_cpu_data.physical_address_mask =
-				get_address_mask(boot_cpu_data.phys_bits);
 	}
 
 	detect_pcpu_cap();
@@ -485,9 +524,4 @@ int32_t detect_hardware_support(void)
 	}
 
 	return ret;
-}
-
-struct cpuinfo_x86 *get_pcpu_info(void)
-{
-	return &boot_cpu_data;
 }

@@ -193,11 +193,10 @@ bool is_ept_force_4k_ipage(void)
 bool is_ept_force_4k_ipage(void)
 {
 	bool force_4k_ipage = true;
-	const struct cpuinfo_x86 *info = get_pcpu_info();
 	uint64_t x86_arch_capabilities;
 
-	if (info->displayfamily == 0x6U) {
-		switch (info->displaymodel) {
+	if (pcpu_family_id() == 0x6U) {
+		switch (pcpu_model_id()) {
 		case 0x26U:
 		case 0x27U:
 		case 0x35U:
