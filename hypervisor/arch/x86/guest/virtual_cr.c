@@ -106,7 +106,6 @@ static uint64_t cr0_reserved_bits_mask;
 static int32_t load_pdptrs(const struct acrn_vcpu *vcpu)
 {
 	uint64_t guest_cr3 = exec_vmread(VMX_GUEST_CR3);
-	struct cpuinfo_x86 *cpu_info = get_pcpu_info();
 	int32_t ret = 0;
 	uint64_t pdpte[4]; /* Total four PDPTE */
 	uint64_t rsvd_bits_mask;
@@ -122,7 +121,7 @@ static int32_t load_pdptrs(const struct acrn_vcpu *vcpu)
 		/* Check if any of the PDPTEs sets both the P flag
 		 * and any reserved bit
 		 */
-		maxphyaddr = cpu_info->phys_bits;
+		maxphyaddr = pcpu_physaddr_bits();
 		/* reserved bits: 1~2, 5~8, maxphyaddr ~ 63 */
 		rsvd_bits_mask = (63U < maxphyaddr) ? 0UL : (((1UL << (63U - maxphyaddr + 1U)) - 1UL) << maxphyaddr);
 		rsvd_bits_mask |= PAE_PDPTE_FIXED_RESVD_BITS;

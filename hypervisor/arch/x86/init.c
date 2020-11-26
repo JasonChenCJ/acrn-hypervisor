@@ -144,7 +144,7 @@ static void init_pcpu_comm_post(void)
 
 		pr_acrnlog("API version %u.%u",	HV_API_MAJOR_VERSION, HV_API_MINOR_VERSION);
 
-		pr_acrnlog("Detect processor: %s", (get_pcpu_info())->model_name);
+		pr_acrnlog("Detect processor: %s", pcpu_model_name());
 
 		pr_dbg("Core %hu is up", BSP_CPU_ID);
 

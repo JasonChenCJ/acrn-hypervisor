@@ -127,31 +127,21 @@
 #define X86_FEATURE_COMPACTION_EXT	((FEAT_D_1_EAX << 5U) + 1U)
 #define X86_FEATURE_XSAVES		((FEAT_D_1_EAX << 5U) + 3U)
 
-struct cpuinfo_x86 {
-	/* SDM 2-2 Vol.4 Table 2-1 uses DisplayFamily_DisplayModel to
-	 * distinguish Processor Families/Processor Number Series.
-	 */
-	uint8_t displayfamily, displaymodel;
-	uint8_t virt_bits;
-	uint8_t phys_bits;
-	uint32_t cpuid_level;
-	uint32_t extended_cpuid_level;
-	uint64_t physical_address_mask;
-	uint32_t cpuid_leaves[FEATURE_WORDS];
-	char model_name[64];
-};
-
 bool has_monitor_cap(void);
-bool is_apl_platform(void);
+uint8_t pcpu_family_id(void);
+uint8_t pcpu_model_id(void);
+char *pcpu_model_name(void);
 bool is_apicv_advanced_feature_supported(void);
+uint8_t pcpu_physaddr_bits(void);
+uint8_t pcpu_virtaddr_bits(void);
+uint32_t pcpu_cpuid_level(void);
+bool pcpu_set_cap(uint32_t bit);
 bool pcpu_has_cap(uint32_t bit);
 bool pcpu_has_vmx_ept_cap(uint32_t bit_mask);
 bool pcpu_has_vmx_vpid_cap(uint32_t bit_mask);
-bool is_apl_platform(void);
 bool has_core_cap(uint32_t bit_mask);
 bool is_ac_enabled(void);
 void init_pcpu_capabilities(void);
 int32_t detect_hardware_support(void);
-struct cpuinfo_x86 *get_pcpu_info(void);
 
 #endif /* CPUINFO_H */

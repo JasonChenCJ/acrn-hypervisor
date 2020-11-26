@@ -105,7 +105,7 @@ static uint32_t get_drhd_dev_scope_cnt(struct acpi_dmar_hardware_unit *drhd)
 /**
  * @Application constraint: The dedicated DMAR unit for Intel integrated GPU
  * shall be available on the physical platform.
- */ 
+ */
 static int32_t handle_one_drhd(struct acpi_dmar_hardware_unit *acpi_drhd, struct dmar_drhd *drhd)
 {
 	struct dmar_dev_scope *dev_scope;
@@ -134,7 +134,7 @@ static int32_t handle_one_drhd(struct acpi_dmar_hardware_unit *acpi_drhd, struct
 		consumed = handle_dmar_devscope(dev_scope, cp, remaining);
 
 		/* Disable GPU IOMMU due to gvt-d hasn’t been enabled on APL yet. */
-		if (is_apl_platform()) {
+		if ((pcpu_family_id() == 0x6U) && (pcpu_model_id() == 0x5cU)) {
 			if (((drhd->segment << 16U) |
 		     	     (dev_scope->bus << 8U) |
 		     	     dev_scope->devfun) == CONFIG_GPU_SBDF) {

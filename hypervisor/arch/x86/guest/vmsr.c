@@ -734,7 +734,9 @@ static void set_guest_ia32_misc_enalbe(struct acrn_vcpu *vcpu, uint64_t v)
 		if ((ecx & CPUID_ECX_SSE3) == 0U) {
 			vcpu_inject_gp(vcpu, 0U);
 			update_vmsr = false;
-		} else if ((!has_monitor_cap()) && (!is_apl_platform())) {
+		/* APL: family 0x6U model 0x5cU */
+		} else if ((!has_monitor_cap()) &&
+				!((pcpu_family_id() == 0x6U) && (pcpu_model_id() == 0x5cU))) {
 			msr_value = msr_read(MSR_IA32_MISC_ENABLE) & ~MSR_IA32_MISC_ENABLE_MONITOR_ENA;
 			msr_value |= v & MSR_IA32_MISC_ENABLE_MONITOR_ENA;
 			/* This will not change the return value of has_monitor_cap() since the feature values
