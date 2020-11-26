@@ -690,11 +690,18 @@ static inline void clac(void)
 }
 
 /*
+ * @pre num <= MAX_PCPU_NUM
+ */
+void set_pcpu_nums(uint16_t num);
+/*
  * @post return <= MAX_PCPU_NUM
  */
 uint16_t get_pcpu_nums(void);
 bool is_pcpu_active(uint16_t pcpu_id);
+void init_pcpu_state(uint16_t pcpu_id);
 uint64_t get_active_pcpu_bitmap(void);
+void wait_all_pcpus_run(void);
+void init_pcpu_xsave(void);
 #else /* ASSEMBLER defined */
 
 #endif /* ASSEMBLER defined */
