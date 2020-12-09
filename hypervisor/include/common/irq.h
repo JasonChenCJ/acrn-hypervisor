@@ -17,6 +17,9 @@
  * @brief public APIs for virtual IRQ
  */
 
+#define DBG_LEVEL_PTIRQ		6U
+#define DBG_LEVEL_IRQ		6U
+
 #define NR_IRQS			256U
 #define IRQ_INVALID		0xffffffffU
 

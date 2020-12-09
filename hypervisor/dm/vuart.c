@@ -187,7 +187,7 @@ static void vuart_trigger_level_intr(const struct acrn_vuart *vu, bool assert)
 		operation = assert ? GSI_SET_HIGH : GSI_SET_LOW;
 	}
 
-	vpic_set_irqline(vm_pic(vu->vm), vu->irq, operation);
+	vpic_set_irqline_lock(vm_pic(vu->vm), vu->irq, operation);
 	vioapic_set_irqline_lock(vu->vm, vu->irq, operation);
 }
 

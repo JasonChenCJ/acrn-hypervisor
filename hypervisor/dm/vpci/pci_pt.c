@@ -28,8 +28,7 @@
 */
 #include <x86/guest/vm.h>
 #include <errno.h>
-#include <ptdev.h>
-#include <x86/guest/assign.h>
+#include <ptintr.h>
 #include <x86/vtd.h>
 #include <x86/guest/ept.h>
 #include <x86/mmu.h>
@@ -81,6 +80,38 @@ static void mask_one_msix_vector(const struct pci_vdev *vdev, uint32_t index)
 	clac();
 }
 
+struct vmsix_remap_args {
+	const struct pci_vdev *vdev;
+	struct msi_info *info;
+	uint32_t index;
+};
+
+static int32_t remap_vmsix_cb(void *a)
+{
+	struct vmsix_remap_args *args = a;
+	const struct pci_vdev *vdev = args->vdev;
+	struct msi_info *pmsi = args->info;
+	struct msix_table_entry *pentry;
+	uint32_t index = args->index;
+
+	/* Write the table entry to the physical structure */
+	pentry = get_msix_table_entry(vdev, index);
+
+	/*
+	 * PCI 3.0 Spec allows writing to Message Address and Message Upper Address
+	 * fields with a single QWORD write, but some hardware can accept 32 bits
+	 * write only
+	 */
+	stac();
+	mmio_write32((uint32_t)(pmsi->addr.full), (void *)&(pentry->addr));
+	mmio_write32((uint32_t)(pmsi->addr.full >> 32U), (void *)((char *)&(pentry->addr) + 4U));
+
+	mmio_write32(pmsi->data.full, (void *)&(pentry->data));
+	mmio_write32(vdev->msix.table_entries[index].vector_control, (void *)&(pentry->vector_control));
+	clac();
+
+	return 0;
+}
 
 /**
  * @pre vdev != NULL
@@ -89,10 +120,13 @@ static void mask_one_msix_vector(const struct pci_vdev *vdev, uint32_t index)
  */
 static void remap_one_vmsix_entry(const struct pci_vdev *vdev, uint32_t index)
 {
+	struct acrn_vm *vm = vpci2vm(vdev->vpci);
 	const struct msix_table_entry *ventry;
-	struct msix_table_entry *pentry;
 	struct msi_info info = {};
-	int32_t ret;
+	struct ptintr_add_args msix_add;
+	struct ptintr_remap_args msix_remap;
+	struct vmsix_remap_args remap_arg =
+		{ .vdev = vdev, .info = &info, .index = index };
 
 	mask_one_msix_vector(vdev, index);
 	ventry = &vdev->msix.table_entries[index];
@@ -100,24 +134,21 @@ static void remap_one_vmsix_entry(const struct pci_vdev *vdev, uint32_t index)
 		info.addr.full = vdev->msix.table_entries[index].addr;
 		info.data.full = vdev->msix.table_entries[index].data;
 
-		ret = ptirq_prepare_msix_remap(vpci2vm(vdev->vpci), vdev->bdf.value, vdev->pdev->bdf.value,
-					       (uint16_t)index, &info, INVALID_IRTE_ID);
-		if (ret == 0) {
-			/* Write the table entry to the physical structure */
-			pentry = get_msix_table_entry(vdev, index);
+		msix_add.intr_type = PTDEV_INTR_MSI;
+		msix_add.msix.virt_bdf = vdev->bdf.value;
+		msix_add.msix.phys_bdf = vdev->pdev->bdf.value;
+		msix_add.msix.entry_nr = (uint16_t)index;
 
-			/*
-			 * PCI 3.0 Spec allows writing to Message Address and Message Upper Address
-			 * fields with a single QWORD write, but some hardware can accept 32 bits
-			 * write only
-			 */
-			stac();
-			mmio_write32((uint32_t)(info.addr.full), (void *)&(pentry->addr));
-			mmio_write32((uint32_t)(info.addr.full >> 32U), (void *)((char *)&(pentry->addr) + 4U));
-
-			mmio_write32(info.data.full, (void *)&(pentry->data));
-			mmio_write32(vdev->msix.table_entries[index].vector_control, (void *)&(pentry->vector_control));
-			clac();
+		/* the goal is to only add once */
+		if (ptintr_add(vm, &msix_add) == 0) {
+			msix_remap.intr_type = PTDEV_INTR_MSI;
+			msix_remap.msix.virt_bdf = vdev->bdf.value;
+			msix_remap.msix.entry_nr = (uint16_t)index;
+			msix_remap.msix.irte_idx = INVALID_IRTE_ID;
+			msix_remap.msix.info = &info;
+			msix_remap.msix.remap_arg = (void *)&remap_arg;
+			msix_remap.msix.remap_cb = remap_vmsix_cb;
+			(void)ptintr_remap(vm, &msix_remap);
 		}
 	}
 
@@ -463,10 +494,19 @@ void init_vmsix_pt(struct pci_vdev *vdev)
  */
 void deinit_vmsix_pt(struct pci_vdev *vdev)
 {
+	uint32_t i;
+	struct ptintr_rmv_args msix_rmv;
+
 	if (has_msix_cap(vdev)) {
 		if (vdev->msix.table_count != 0U) {
-			ptirq_remove_msix_remapping(vpci2vm(vdev->vpci), vdev->pdev->bdf.value, vdev->msix.table_count);
-			(void)memset((void *)&vdev->msix.table_entries, 0U, sizeof(vdev->msix.table_entries));
+			msix_rmv.intr_type = PTDEV_INTR_MSI;
+			msix_rmv.msix.phys_bdf = vdev->pdev->bdf.value;
+
+			for (i = 0U; i < vdev->msix.table_count; i++) {
+				msix_rmv.msix.entry_nr = i;
+				ptintr_remove_and_unmap(vpci2vm(vdev->vpci), &msix_rmv);
+			}
+			(void)memset((void *)&vdev->msix, 0U, sizeof(vdev->msix));
 			vdev->msix.is_vmsix_on_msi_programmed = false;
 		}
 	}

@@ -14,7 +14,7 @@
 #include <x86/vmx.h>
 #include <x86/cpuid.h>
 #include <x86/ioapic.h>
-#include <ptdev.h>
+#include <ptirq.h>
 #include <x86/guest/vm.h>
 #include <sprintf.h>
 #include <logmsg.h>
@@ -1047,63 +1047,44 @@ static int32_t shell_show_cpu_int(__unused int32_t argc, __unused char **argv)
 	return 0;
 }
 
-static void get_entry_info(const struct ptirq_remapping_info *entry, char *type,
+static void get_entry_info(const struct ptintr *intr, char *type,
 		uint32_t *irq, uint32_t *vector, uint64_t *dest, bool *lvl_tm,
 		uint32_t *pgsi, uint32_t *vgsi, uint32_t *bdf, uint32_t *vbdf)
 {
-	if (is_entry_active(entry)) {
-		if (entry->intr_type == PTDEV_INTR_MSI) {
-			(void)strncpy_s(type, 16U, "MSI", 16U);
-			*dest = entry->pmsi.addr.bits.dest_field;
-			if (entry->pmsi.data.bits.trigger_mode == MSI_DATA_TRGRMODE_LEVEL) {
-				*lvl_tm = true;
-			} else {
-				*lvl_tm = false;
-			}
-			*pgsi = INVALID_INTERRUPT_PIN;
-			*vgsi = INVALID_INTERRUPT_PIN;
-			*bdf = entry->phys_sid.msi_id.bdf;
-			*vbdf = entry->virt_sid.msi_id.bdf;
-		} else {
-			uint32_t phys_irq = entry->allocated_pirq;
-			union ioapic_rte rte;
+	uint32_t phys_irq = ptirq_get_irq(intr->irq);
 
-			if (entry->virt_sid.intx_id.ctlr == INTX_CTLR_IOAPIC) {
-				(void)strncpy_s(type, 16U, "IOAPIC", 16U);
-			} else {
-				(void)strncpy_s(type, 16U, "PIC", 16U);
-			}
-			ioapic_get_rte(phys_irq, &rte);
-			*dest = rte.bits.dest_field;
-			if (rte.bits.trigger_mode == IOAPIC_RTE_TRGRMODE_LEVEL) {
-				*lvl_tm = true;
-			} else {
-				*lvl_tm = false;
-			}
-			*pgsi = entry->phys_sid.intx_id.gsi;
-			*vgsi = entry->virt_sid.intx_id.gsi;
-			*bdf = 0U;
-			*vbdf = 0U;
-		}
-		*irq = entry->allocated_pirq;
-		*vector = irq_to_vector(entry->allocated_pirq);
+	if (intr->intr_type == PTDEV_INTR_MSI) {
+		(void)strncpy_s(type, 16U, "MSI", 16U);
+		*dest = intr->pmsi.addr.bits.dest_field;
+		*lvl_tm = (intr->pmsi.data.bits.trigger_mode == MSI_DATA_TRGRMODE_LEVEL);
+		*pgsi = INVALID_INTERRUPT_PIN;
+		*vgsi = INVALID_INTERRUPT_PIN;
+		*bdf = intr->phys_sid.msi_id.bdf;
+		*vbdf = intr->virt_sid.msi_id.bdf;
 	} else {
-		(void)strncpy_s(type, 16U, "NONE", 16U);
-		*irq = IRQ_INVALID;
-		*vector = 0U;
-		*dest = 0UL;
-		*lvl_tm = 0;
-		*pgsi = ~0U;
-		*vgsi = ~0U;
+		union ioapic_rte rte;
+
+		if (intr->virt_sid.intx_id.ctlr == INTX_CTLR_IOAPIC) {
+			(void)strncpy_s(type, 16U, "IOAPIC", 16U);
+		} else {
+			(void)strncpy_s(type, 16U, "PIC", 16U);
+		}
+		ioapic_get_rte(phys_irq, &rte);
+		*dest = rte.bits.dest_field;
+		*lvl_tm = (rte.bits.trigger_mode == IOAPIC_RTE_TRGRMODE_LEVEL);
+		*pgsi = intr->phys_sid.intx_id.gsi;
+		*vgsi = intr->virt_sid.intx_id.gsi;
 		*bdf = 0U;
 		*vbdf = 0U;
 	}
+	*irq = phys_irq;
+	*vector = irq_to_vector(phys_irq);
 }
 
 static void get_ptdev_info(char *str_arg, size_t str_max)
 {
 	char *str = str_arg;
-	struct ptirq_remapping_info *entry;
+	struct ptintr *intr;
 	uint16_t idx;
 	size_t len, size = str_max;
 	uint32_t irq, vector;
@@ -1120,13 +1101,14 @@ static void get_ptdev_info(char *str_arg, size_t str_max)
 	size -= len;
 	str += len;
 
-	for (idx = 0U; idx < CONFIG_MAX_PT_IRQ_ENTRIES; idx++) {
-		entry = &ptirq_entries[idx];
-		if (is_entry_active(entry)) {
-			get_entry_info(entry, type, &irq, &vector, &dest, &lvl_tm, &pgsi, &vgsi,
+	for (idx = 0U; idx < ARRAY_SIZE(ptintr_entries); idx++) {
+		/* lockless retrieval */
+		intr = &ptintr_entries[idx];
+		if (intr->active) {
+			get_entry_info(intr, type, &irq, &vector, &dest, &lvl_tm, &pgsi, &vgsi,
 					(uint32_t *)&bdf, (uint32_t *)&vbdf);
 			len = snprintf(str, size, "\r\n%d\t%s\t%d\t0x%X\t0x%X",
-					entry->vm->vm_id, type, irq, vector, dest);
+					intr->vm->vm_id, type, irq, vector, dest);
 			if (len >= size) {
 				goto overflow;
 			}
@@ -1134,7 +1116,7 @@ static void get_ptdev_info(char *str_arg, size_t str_max)
 			str += len;
 
 			len = snprintf(str, size, "\t%s\t%hhu\t%hhu\t%x:%x.%x\t%x:%x.%x",
-					is_entry_active(entry) ? (lvl_tm ? "level" : "edge") : "none",
+					lvl_tm ? "level" : "edge",
 					pgsi, vgsi, bdf.bits.b, bdf.bits.d, bdf.bits.f,
 					vbdf.bits.b, vbdf.bits.d, vbdf.bits.f);
 			if (len >= size) {
