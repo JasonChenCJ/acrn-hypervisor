@@ -19,7 +19,6 @@
 #include <x86/guest/ept.h>
 #include <x86/guest/guest_pm.h>
 #include <console.h>
-#include <ptdev.h>
 #include <x86/guest/vmcs.h>
 #include <x86/pgtable.h>
 #include <x86/mmu.h>
@@ -33,7 +32,7 @@
 #include <x86/platform_caps.h>
 #include <mmio_dev.h>
 #include <x86/trampoline.h>
-#include <x86/guest/assign.h>
+#include <ptintr.h>
 #include <vgpio.h>
 #include <x86/ptcm.h>
 
@@ -411,6 +410,23 @@ static uint64_t lapic_pt_enabled_pcpu_bitmap(struct acrn_vm *vm)
 	return bitmap;
 }
 
+/*
+ * @pre vm != NULL
+ */
+static void ptintr_remove_configured_intx_remappings(struct acrn_vm *vm)
+{
+	const struct acrn_vm_config *vm_config = get_vm_config(vm->vm_id);
+	struct ptintr_rmv_args intx_rmv;
+	uint32_t i;
+
+	for (i = 0; i < vm_config->pt_intx_num; i++) {
+		intx_rmv.intr_type = PTDEV_INTR_INTX;
+		intx_rmv.intx.virt_gsi = vm_config->pt_intx[i].virt_gsi;
+		intx_rmv.intx.virt_ctlr = INTX_CTLR_IOAPIC;
+		ptintr_remove_and_unmap(vm, &intx_rmv);
+	}
+}
+
 /**
  * @pre vm_id < CONFIG_MAX_VM_NUM && vm_config != NULL && rtn_vm != NULL
  * @pre vm->state == VM_POWERED_OFF
@@ -540,11 +556,18 @@ int32_t create_vm(uint16_t vm_id, uint64_t pcpu_bitmap, struct acrn_vm_config *v
 
 	if (status == 0) {
 		uint32_t i;
+		struct ptintr_add_args intx_add;
+
 		for (i = 0; i < vm_config->pt_intx_num; i++) {
-			status = ptirq_add_intx_remapping(vm, vm_config->pt_intx[i].virt_gsi,
-								vm_config->pt_intx[i].phys_gsi, false);
+			intx_add.intr_type = PTDEV_INTR_INTX;
+			intx_add.intx.virt_gsi = vm_config->pt_intx[i].virt_gsi;
+			intx_add.intx.virt_ctlr = INTX_CTLR_IOAPIC;
+			intx_add.intx.phys_gsi = vm_config->pt_intx[i].phys_gsi;
+			intx_add.intx.phys_ctlr = INTX_CTLR_IOAPIC;
+			status = ptintr_add(vm, &intx_add);
+
 			if (status != 0) {
-				ptirq_remove_configured_intx_remappings(vm);
+				ptintr_remove_configured_intx_remappings(vm);
 				break;
 			}
 		}
@@ -635,7 +658,7 @@ int32_t shutdown_vm(struct acrn_vm *vm)
 		sbuf_reset();
 	}
 
-	ptirq_remove_configured_intx_remappings(vm);
+	ptintr_remove_configured_intx_remappings(vm);
 
 	deinit_legacy_vuarts(vm);
 

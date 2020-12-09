@@ -12,9 +12,9 @@
 #include <x86/vtd.h>
 #include <x86/per_cpu.h>
 #include <x86/lapic.h>
-#include <x86/guest/assign.h>
 #include <x86/guest/ept.h>
 #include <x86/mmu.h>
+#include <ptintr.h>
 #include <hypercall.h>
 #include <errno.h>
 #include <logmsg.h>
@@ -412,7 +412,7 @@ int32_t hcall_set_irqline(struct acrn_vm *vm, struct acrn_vm *target_vm, __unuse
 				 * number #2 to PIC IRQ #0.
 				 */
 				irq_pic = (ops->gsi == 2U) ? 0U : ops->gsi;
-				vpic_set_irqline(vm_pic(target_vm), irq_pic, ops->op);
+				vpic_set_irqline_lock(vm_pic(target_vm), irq_pic, ops->op);
 			}
 
 			/* handle IOAPIC irqline */
@@ -935,6 +935,7 @@ int32_t hcall_set_ptdev_intr_info(struct acrn_vm *vm, struct acrn_vm *target_vm,
 				struct pci_vdev *vdev;
 				union pci_bdf bdf = {.value = irq.virt_bdf};
 				struct acrn_vpci *vpci = &target_vm->vpci;
+				struct ptintr_add_args intx_add;
 
 				spinlock_obtain(&vpci->lock);
 				vdev = pci_find_vdev(vpci, bdf);
@@ -948,8 +949,13 @@ int32_t hcall_set_ptdev_intr_info(struct acrn_vm *vm, struct acrn_vm *target_vm,
 					if ((((!irq.intx.pic_pin) && (irq.intx.virt_pin < get_vm_gsicount(target_vm)))
 						|| ((irq.intx.pic_pin) && (irq.intx.virt_pin < vpic_pincount())))
 							&& is_gsi_valid(irq.intx.phys_pin)) {
-						ret = ptirq_add_intx_remapping(target_vm, irq.intx.virt_pin,
-								irq.intx.phys_pin, irq.intx.pic_pin);
+						intx_add.intr_type = PTDEV_INTR_INTX;
+						intx_add.intx.virt_gsi = irq.intx.virt_pin;
+						intx_add.intx.virt_ctlr = irq.intx.pic_pin ?
+							INTX_CTLR_PIC : INTX_CTLR_IOAPIC;
+						intx_add.intx.phys_gsi = irq.intx.phys_pin;
+						intx_add.intx.phys_ctlr = INTX_CTLR_IOAPIC;
+						ret = ptintr_add(target_vm, &intx_add);
 					} else {
 						pr_err("%s: Invalid phys pin or virt pin\n", __func__);
 					}
@@ -986,6 +992,7 @@ int32_t hcall_reset_ptdev_intr_info(struct acrn_vm *vm, struct acrn_vm *target_v
 				struct pci_vdev *vdev;
 				union pci_bdf bdf = {.value = irq.virt_bdf};
 				struct acrn_vpci *vpci = &target_vm->vpci;
+				struct ptintr_rmv_args intx_rmv;
 
 				spinlock_obtain(&vpci->lock);
 				vdev = pci_find_vdev(vpci, bdf);
@@ -998,7 +1005,11 @@ int32_t hcall_reset_ptdev_intr_info(struct acrn_vm *vm, struct acrn_vm *target_v
 				if ((vdev != NULL) && (vdev->pdev->bdf.value == irq.phys_bdf)) {
 					if (((!irq.intx.pic_pin) && (irq.intx.virt_pin < get_vm_gsicount(target_vm))) ||
 						((irq.intx.pic_pin) && (irq.intx.virt_pin < vpic_pincount()))) {
-						ptirq_remove_intx_remapping(target_vm, irq.intx.virt_pin, irq.intx.pic_pin);
+						intx_rmv.intr_type = PTDEV_INTR_INTX;
+						intx_rmv.intx.virt_gsi = irq.intx.virt_pin;
+						intx_rmv.intx.virt_ctlr = irq.intx.pic_pin ?
+							INTX_CTLR_PIC : INTX_CTLR_IOAPIC;
+						ptintr_remove_and_unmap(target_vm, &intx_rmv);
 						ret = 0;
 					} else {
 						pr_err("%s: Invalid virt pin\n", __func__);
@@ -1117,7 +1128,7 @@ int32_t hcall_vm_intr_monitor(struct acrn_vm *vm, struct acrn_vm *target_vm, __u
 			if (intr_hdr->buf_cnt <= (MAX_PTDEV_NUM * 2U)) {
 				switch (intr_hdr->cmd) {
 				case INTR_CMD_GET_DATA:
-					intr_hdr->buf_cnt = ptirq_get_intr_data(target_vm,
+					intr_hdr->buf_cnt = ptintr_get_intr_data(target_vm,
 						intr_hdr->buffer, intr_hdr->buf_cnt);
 					break;
 

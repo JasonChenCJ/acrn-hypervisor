@@ -40,7 +40,7 @@
 #include <errno.h>
 #include <x86/guest/vm.h>
 #include <x86/guest/ept.h>
-#include <x86/guest/assign.h>
+#include <ptintr.h>
 #include <x86/io.h>
 #include <x86/mmu.h>
 

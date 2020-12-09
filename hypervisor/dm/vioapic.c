@@ -30,12 +30,12 @@
 
 #define pr_prefix	"vioapic: "
 
-#include <x86/guest/vm.h>
 #include <errno.h>
+#include <logmsg.h>
+#include <ptintr.h>
+#include <x86/guest/vm.h>
 #include <x86/irq.h>
 #include <x86/guest/ept.h>
-#include <x86/guest/assign.h>
-#include <logmsg.h>
 #include <x86/ioapic.h>
 
 #define	RTBL_RO_BITS	((uint32_t)0x00004000U | (uint32_t)0x00001000U) /*Remote IRR and Delivery Status bits*/
@@ -302,8 +302,10 @@ static void vioapic_indirect_write(struct acrn_single_vioapic *vioapic, uint32_t
 		bool wire_mode_valid = true;
 		uint32_t addr_offset = regnum - IOAPIC_REDTBL;
 		uint32_t rte_offset = addr_offset >> 1U;
-		pin = rte_offset;
+		struct ptintr_add_args intx_add;
+		struct ptintr_remap_args intx_remap;
 
+		pin = rte_offset;
 		last = vioapic->rtbl[pin];
 		new = last;
 		if ((addr_offset & 1U) != 0U) {
@@ -354,8 +356,16 @@ static void vioapic_indirect_write(struct acrn_single_vioapic *vioapic, uint32_t
 			if ((new.bits.intr_mask == IOAPIC_RTE_MASK_CLR) || (last.bits.intr_mask  == IOAPIC_RTE_MASK_CLR)) {
 				/* VM enable intr */
 				/* NOTE: only support max 256 pin */
-				
-				(void)ptirq_intx_pin_remap(vioapic->vm, vioapic->chipinfo.gsi_base + pin, INTX_CTLR_IOAPIC);
+				intx_add.intr_type = PTDEV_INTR_INTX;
+				intx_add.intx.virt_gsi = vioapic->chipinfo.gsi_base + pin;
+				intx_add.intx.virt_ctlr = INTX_CTLR_IOAPIC;
+				intx_add.intx.phys_gsi = intx_add.intx.virt_gsi;
+				intx_add.intx.phys_ctlr = INTX_CTLR_IOAPIC; 
+				(void)ptintr_add(vioapic->vm, &intx_add);
+				intx_remap.intr_type = PTDEV_INTR_INTX;
+				intx_remap.intx.virt_gsi = vioapic->chipinfo.gsi_base + pin;
+				intx_remap.intx.virt_ctlr = INTX_CTLR_IOAPIC;
+				(void)ptintr_remap(vioapic->vm, &intx_remap);
 			}
 
 			/*
@@ -430,6 +440,7 @@ vioapic_process_eoi(struct acrn_single_vioapic *vioapic, uint32_t vector)
 	}
 
 	dev_dbg(DBG_LEVEL_VIOAPIC, "ioapic processing eoi for vector %u", vector);
+	spinlock_irqsave_obtain(&(vioapic->lock), &rflags);
 
 	/* notify device to ack if assigned pin */
 	for (pin = 0U; pin < pincount; pin++) {
@@ -439,14 +450,13 @@ vioapic_process_eoi(struct acrn_single_vioapic *vioapic, uint32_t vector)
 			continue;
 		}
 
-		ptirq_intx_ack(vioapic->vm, vioapic->chipinfo.gsi_base + pin, INTX_CTLR_IOAPIC);
+		ptintr_intx_ack(vioapic->vm, vioapic->chipinfo.gsi_base + pin, INTX_CTLR_IOAPIC);
 	}
 
 	/*
 	 * XXX keep track of the pins associated with this vector instead
 	 * of iterating on every single pin each time.
 	 */
-	spinlock_irqsave_obtain(&(vioapic->lock), &rflags);
 	for (pin = 0U; pin < pincount; pin++) {
 		rte = vioapic->rtbl[pin];
 		if ((rte.bits.vector != vector) ||

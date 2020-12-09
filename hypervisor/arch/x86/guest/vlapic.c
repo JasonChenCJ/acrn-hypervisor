@@ -38,7 +38,7 @@
 #include <x86/lapic.h>
 #include <x86/guest/vmcs.h>
 #include <x86/guest/vlapic.h>
-#include <ptdev.h>
+#include <ptintr.h>
 #include <x86/vmx.h>
 #include <x86/guest/vm.h>
 #include <x86/guest/ept.h>

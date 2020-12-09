@@ -28,8 +28,7 @@
  */
 
 #include <x86/guest/vm.h>
-#include <ptdev.h>
-#include <x86/guest/assign.h>
+#include <ptintr.h>
 #include <vpci.h>
 #include <x86/vtd.h>
 #include "vpci_priv.h"
@@ -52,6 +51,37 @@ static inline void enable_disable_msi(const struct pci_vdev *vdev, bool enable)
 	}
 	pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_CTRL, 2U, msgctrl);
 }
+
+struct vmsi_remap_args {
+	const struct pci_vdev *vdev;
+	struct msi_info *info;
+};
+
+static int32_t remap_vmsi_cb(void *a)
+{
+	struct vmsi_remap_args *args = a;
+	const struct pci_vdev *vdev = args->vdev;
+	struct msi_info *pmsi = args->info;
+	union pci_bdf pbdf = vdev->pdev->bdf;
+	uint32_t capoff = vdev->msi.capoff;
+
+	pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR, 0x4U, (uint32_t)pmsi->addr.full);
+
+	if (vdev->msi.is_64bit) {
+		pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR_HIGH, 0x4U,
+				(uint32_t)(pmsi->addr.full >> 32U));
+		pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA_64BIT, 0x2U,
+				(uint16_t)pmsi->data.full);
+	} else {
+		pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA, 0x2U, (uint16_t)pmsi->data.full);
+	}
+
+	/* If MSI Enable is being set, make sure INTxDIS bit is set */
+	enable_disable_pci_intx(pbdf, false);
+	enable_disable_msi(vdev, true);
+	return 0;
+}
+
 /**
  * @brief Remap vMSI virtual address and data to MSI physical address and data
  * This function is called when physical MSI is disabled.
@@ -65,6 +95,9 @@ static void remap_vmsi(const struct pci_vdev *vdev)
 	struct msi_info info = {};
 	union pci_bdf pbdf = vdev->pdev->bdf;
 	struct acrn_vm *vm = vpci2vm(vdev->vpci);
+	struct ptintr_add_args msix_add;
+	struct ptintr_remap_args msix_remap;
+	struct vmsi_remap_args remap_arg = { .vdev = vdev, .info = &info };
 	uint32_t capoff = vdev->msi.capoff;
 	uint32_t vmsi_msgdata, vmsi_addrlo, vmsi_addrhi = 0U;
 
@@ -79,19 +112,21 @@ static void remap_vmsi(const struct pci_vdev *vdev)
 	info.addr.full = (uint64_t)vmsi_addrlo | ((uint64_t)vmsi_addrhi << 32U);
 	info.data.full = vmsi_msgdata;
 
-	if (ptirq_prepare_msix_remap(vm, vdev->bdf.value, pbdf.value, 0U, &info, INVALID_IRTE_ID) == 0) {
-		pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR, 0x4U, (uint32_t)info.addr.full);
-		if (vdev->msi.is_64bit) {
-			pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR_HIGH, 0x4U,
-					(uint32_t)(info.addr.full >> 32U));
-			pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA_64BIT, 0x2U, (uint16_t)info.data.full);
-		} else {
-			pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA, 0x2U, (uint16_t)info.data.full);
-		}
+	msix_add.intr_type = PTDEV_INTR_MSI;
+	msix_add.msix.virt_bdf = vdev->bdf.value;
+	msix_add.msix.phys_bdf = pbdf.value;
+	msix_add.msix.entry_nr = 0U;
 
-		/* If MSI Enable is being set, make sure INTxDIS bit is set */
-		enable_disable_pci_intx(pbdf, false);
-		enable_disable_msi(vdev, true);
+	/* the goal is to only add once */
+	if (ptintr_add(vm, &msix_add) == 0) {
+		msix_remap.intr_type = PTDEV_INTR_MSI;
+		msix_remap.msix.virt_bdf = vdev->bdf.value;
+		msix_remap.msix.entry_nr = 0U;
+		msix_remap.msix.irte_idx = INVALID_IRTE_ID;
+		msix_remap.msix.info = &info;
+		msix_remap.msix.remap_arg = (void *)&remap_arg;
+		msix_remap.msix.remap_cb = remap_vmsi_cb;
+		(void)ptintr_remap(vm, &msix_remap);
 	}
 }
 
@@ -127,8 +162,14 @@ void write_vmsi_cap_reg(struct pci_vdev *vdev, uint32_t offset, uint32_t bytes, 
  */
 void deinit_vmsi(const struct pci_vdev *vdev)
 {
+	struct ptintr_rmv_args msi_rmv;
+
 	if (has_msi_cap(vdev)) {
-		ptirq_remove_msix_remapping(vpci2vm(vdev->vpci), vdev->pdev->bdf.value, 1U);
+		msi_rmv.intr_type = PTDEV_INTR_MSI;
+		msi_rmv.msix.phys_bdf = vdev->pdev->bdf.value;
+		msi_rmv.msix.entry_nr = 0U;
+		ptintr_remove_and_unmap(vpci2vm(vdev->vpci), &msi_rmv);
+		(void)memset((void *)&vdev->msi, 0U, sizeof(vdev->msi));
 	}
 }
 

@@ -28,7 +28,6 @@
  */
 
 #include <x86/guest/vm.h>
-#include <ptdev.h>
 #include <vpci.h>
 #include <x86/pci_dev.h>
 #include <logmsg.h>

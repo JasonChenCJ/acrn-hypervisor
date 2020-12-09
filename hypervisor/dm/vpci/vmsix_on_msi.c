@@ -5,9 +5,8 @@
  */
 
 #include <x86/guest/vm.h>
-#include <ptdev.h>
-#include <x86/guest/assign.h>
 #include <vpci.h>
+#include <ptintr.h>
 #include <x86/vtd.h>
 #include <x86/board.h>
 #include "vpci_priv.h"
@@ -157,16 +156,63 @@ void write_vmsix_cap_reg_on_msi(struct pci_vdev *vdev, uint32_t offset, uint32_t
 	}
 }
 
+struct vmsix_remap_args {
+	struct pci_vdev *vdev;
+	struct msi_info *info;
+	uint32_t index;
+};
+
+union irte_index {
+	uint16_t index;
+	struct {
+		uint16_t index_low:15;
+		uint16_t index_high:1;
+	} bits __packed;
+};
+
+static int32_t remap_vmsix_on_msi_cb(void *a)
+{
+	struct vmsix_remap_args *args = a;
+	struct pci_vdev *vdev = args->vdev;
+	struct msi_info *pmsi = args->info;
+	union pci_bdf pbdf = vdev->pdev->bdf;
+	uint32_t capoff = vdev->msix.capoff;
+	union irte_index ir_index;
+
+	if (!vdev->msix.is_vmsix_on_msi_programmed) {
+		ir_index.index = vdev->pdev->irte_start;
+		pmsi->addr.ir_bits.shv = 1U;
+		pmsi->addr.ir_bits.intr_index_high = ir_index.bits.index_high;
+		pmsi->addr.ir_bits.intr_index_low = ir_index.bits.index_low;
+		pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR, 0x4U, (uint32_t)pmsi->addr.full);
+		if (vdev->msi.is_64bit) {
+			pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR_HIGH, 0x4U,
+					(uint32_t)(pmsi->addr.full >> 32U));
+			pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA_64BIT, 0x2U,
+					(uint16_t)pmsi->data.full);
+		} else {
+			pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA, 0x2U,
+					(uint16_t)pmsi->data.full);
+		}
+		vdev->msix.is_vmsix_on_msi_programmed = true;
+	}
+
+	return 0;
+}
+
 void remap_one_vmsix_entry_on_msi(struct pci_vdev *vdev, uint32_t index)
 {
 	const struct msix_table_entry *ventry;
+	struct acrn_vm *vm = vpci2vm(vdev->vpci);
 	uint32_t mask_bits;
 	uint32_t vector_mask = 1U << index;
 	struct msi_info info = {};
 	union pci_bdf pbdf = vdev->pdev->bdf;
-	union irte_index ir_index;
 	int32_t ret = 0;
-	uint32_t capoff = vdev->msix.capoff;
+	struct ptintr_add_args msix_add;
+	struct ptintr_remap_args msix_remap;
+	struct vmsix_remap_args remap_arg =
+		{ .vdev = vdev, .info = &info, .index = index };
 
 	mask_bits = pci_pdev_read_cfg(pbdf, get_mask_bits_offset(vdev), 4U);
 	mask_bits |= vector_mask;
@@ -177,27 +223,25 @@ void remap_one_vmsix_entry_on_msi(struct pci_vdev *vdev, uint32_t index)
 		info.addr.full = vdev->msix.table_entries[index].addr;
 		info.data.full = vdev->msix.table_entries[index].data;
 
-		ret = ptirq_prepare_msix_remap(vpci2vm(vdev->vpci), vdev->bdf.value, pbdf.value,
-			(uint16_t)index, &info, vdev->pdev->irte_start + (uint16_t)index);
-		if (ret == 0) {
-			if (!vdev->msix.is_vmsix_on_msi_programmed) {
-				ir_index.index = vdev->pdev->irte_start;
-				info.addr.ir_bits.shv = 1U;
-				info.addr.ir_bits.intr_index_high = ir_index.bits.index_high;
-				info.addr.ir_bits.intr_index_low = ir_index.bits.index_low;
-				pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR, 0x4U, (uint32_t)info.addr.full);
-				if (vdev->msi.is_64bit) {
-					pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_ADDR_HIGH, 0x4U,
-							(uint32_t)(info.addr.full >> 32U));
-					pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA_64BIT, 0x2U,
-							(uint16_t)info.data.full);
-				} else {
-					pci_pdev_write_cfg(pbdf, capoff + PCIR_MSI_DATA, 0x2U,
-							(uint16_t)info.data.full);
-				}
-				vdev->msix.is_vmsix_on_msi_programmed = true;
+		msix_add.intr_type = PTDEV_INTR_MSI;
+		msix_add.msix.virt_bdf = vdev->bdf.value;
+		msix_add.msix.phys_bdf = vdev->pdev->bdf.value;
+		msix_add.msix.entry_nr = (uint16_t)index;
+
+		/* the goal is to only add once */
+		if (ptintr_add(vm, &msix_add) == 0) {
+			msix_remap.intr_type = PTDEV_INTR_MSI;
+			msix_remap.msix.virt_bdf = vdev->bdf.value;
+			msix_remap.msix.entry_nr = (uint16_t)index;
+			msix_remap.msix.irte_idx = vdev->pdev->irte_start + (uint16_t)index;
+			msix_remap.msix.info = &info;
+			msix_remap.msix.remap_arg = (void *)&remap_arg;
+			msix_remap.msix.remap_cb = remap_vmsix_on_msi_cb;
+			ret = ptintr_remap(vm, &msix_remap);
+
+			if (ret == 0) {
+				mask_bits &= ~vector_mask;
 			}
-			mask_bits &= ~vector_mask;
 		}
 	}
 	pci_pdev_write_cfg(pbdf, get_mask_bits_offset(vdev), 4U, mask_bits);

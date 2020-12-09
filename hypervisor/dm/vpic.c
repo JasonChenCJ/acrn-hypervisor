@@ -27,11 +27,12 @@
 
 #define pr_prefix	"vpic: "
 
+#include <logmsg.h>
+#include <ptintr.h>
 #include <x86/guest/vm.h>
 #include <x86/irq.h>
-#include <x86/guest/assign.h>
+#include <x86/ptirq.h>
 #include <x86/lib/spinlock.h>
-#include <logmsg.h>
 #include <x86/ioapic.h>
 
 #define DBG_LEVEL_PIC	6U
@@ -408,7 +409,8 @@ static int32_t vpic_ocw1(const struct acrn_vpic *vpic, struct i8259_reg_state *i
 		 */
 		if (((i8259->mask & bit) == 0U) && ((old & bit) != 0U)) {
 			uint32_t virt_pin;
-			uint32_t vgsi;
+			struct ptintr_add_args intx_add;
+			struct ptintr_remap_args intx_remap;
 
 			/* Primary i8259 pin2 connect with secondary i8259,
 			 * not device, so not need pt remap
@@ -421,8 +423,16 @@ static int32_t vpic_ocw1(const struct acrn_vpic *vpic, struct i8259_reg_state *i
 			virt_pin = (primary_pic(vpic, i8259)) ?
 					pin : (pin + 8U);
 
-			vgsi = vpin_to_vgsi(vm, virt_pin);
-			(void)ptirq_intx_pin_remap(vm, vgsi, INTX_CTLR_PIC);
+			intx_add.intr_type = PTDEV_INTR_INTX;
+			intx_add.intx.virt_gsi = vpin_to_vgsi(vm, virt_pin);
+			intx_add.intx.virt_ctlr = INTX_CTLR_PIC;
+			intx_add.intx.phys_gsi = intx_add.intx.virt_gsi;
+			intx_add.intx.phys_ctlr = INTX_CTLR_IOAPIC; 
+			(void)ptintr_add(vm, &intx_add);
+			intx_remap.intr_type = PTDEV_INTR_INTX;
+			intx_remap.intx.virt_gsi = vpin_to_vgsi(vm, virt_pin);
+			intx_remap.intx.virt_ctlr = INTX_CTLR_PIC;
+			(void)ptintr_remap(vm, &intx_remap);
 		}
 		pin = (pin + 1U) & 0x7U;
 	}
@@ -461,7 +471,7 @@ static int32_t vpic_ocw2(const struct acrn_vpic *vpic, struct i8259_reg_state *i
 		/* if level ack PTDEV */
 		if ((i8259->elc & (1U << (isr_bit & 0x7U))) != 0U) {
 			vgsi = vpin_to_vgsi(vm, (primary_pic(vpic, i8259) ? isr_bit : isr_bit + 8U));
-			ptirq_intx_ack(vm, vgsi, INTX_CTLR_PIC);
+			ptintr_intx_ack(vm, vgsi, INTX_CTLR_PIC);
 		}
 	} else if (((val & OCW2_SL) != 0U) && i8259->rotate) {
 		/* specific priority */
@@ -533,7 +543,7 @@ static void vpic_set_pinstate(struct acrn_vpic *vpic, uint32_t pin, uint8_t leve
 }
 
 /**
- * @brief Set vPIC IRQ line status.
+ * @brief Set vPIC IRQ line status, without acquiring the vPIC lock.
  *
  * @param[in] vpic      Pointer to virtual pic structure
  * @param[in] irqline   Target IRQ number
@@ -542,18 +552,17 @@ static void vpic_set_pinstate(struct acrn_vpic *vpic, uint32_t pin, uint8_t leve
  *
  * @return None
  */
-void vpic_set_irqline(struct acrn_vpic *vpic, uint32_t vgsi, uint32_t operation)
+void vpic_set_irqline_nolock(struct acrn_vpic *vpic, uint32_t vgsi, uint32_t operation)
 {
 	struct i8259_reg_state *i8259;
 	uint32_t pin;
-	uint64_t rflags;
 
 	if (vgsi < NR_VPIC_PINS_TOTAL) {
 		i8259 = &vpic->i8259[vgsi >> 3U];
 
 		if (i8259->ready) {
 			pin = vgsi_to_vpin(vpic2vm(vpic), vgsi);
-			spinlock_irqsave_obtain(&(vpic->lock), &rflags);
+
 			switch (operation) {
 			case GSI_SET_HIGH:
 				vpic_set_pinstate(vpic, pin, 1U);
@@ -576,9 +585,27 @@ void vpic_set_irqline(struct acrn_vpic *vpic, uint32_t vgsi, uint32_t operation)
 				break;
 			}
 			vpic_notify_intr(vpic);
-			spinlock_irqrestore_release(&(vpic->lock), rflags);
 		}
 	}
+}
+
+/**
+ * @brief Set vPIC IRQ line status.
+ *
+ * @param[in] vpic      Pointer to virtual pic structure
+ * @param[in] irqline   Target IRQ number
+ * @param[in] operation action options:GSI_SET_HIGH/GSI_SET_LOW/
+ *			GSI_RAISING_PULSE/GSI_FALLING_PULSE
+ *
+ * @return None
+ */
+void vpic_set_irqline_lock(struct acrn_vpic *vpic, uint32_t vgsi, uint32_t operation)
+{
+	uint64_t rflags;
+
+	spinlock_irqsave_obtain(&(vpic->lock), &rflags);
+	vpic_set_irqline_nolock(vpic, vgsi, operation);
+	spinlock_irqrestore_release(&(vpic->lock), rflags);
 }
 
 uint32_t

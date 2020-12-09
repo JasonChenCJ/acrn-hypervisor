@@ -8,7 +8,7 @@
 #include <console.h>
 #include <version.h>
 #include <shell.h>
-#include <ptdev.h>
+#include <ptintr.h>
 #include <logmsg.h>
 #include <cycles.h>
 #include <boot.h>
@@ -155,7 +155,7 @@ static void init_pcpu_comm_post(void)
 		init_ivshmem_shared_memory();
 #endif
 		init_pci_pdev_list(); /* init_iommu must come before this */
-		ptdev_init();
+		ptintr_init();
 
 		if (init_sgx() != 0) {
 			panic("failed to initialize sgx!");
@@ -186,7 +186,7 @@ static void init_pcpu_comm_post(void)
 		init_interrupt(pcpu_id);
 
 		timer_init();
-		ptdev_init();
+		ptintr_init();
 
 		/* Wait for boot processor to signal all secondary cores to continue */
 		wait_all_pcpus_run();

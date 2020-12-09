@@ -146,6 +146,18 @@ void vpic_init(struct acrn_vm *vm);
  */
 
 /**
+ * @brief Set vPIC IRQ line status, without acquiring the vPIC lock.
+ *
+ * @param[in] vpic      Pointer to virtual pic structure
+ * @param[in] irqline   Target IRQ number
+ * @param[in] operation action options:GSI_SET_HIGH/GSI_SET_LOW/
+ *			GSI_RAISING_PULSE/GSI_FALLING_PULSE
+ *
+ * @return None
+ */
+void vpic_set_irqline_nolock(struct acrn_vpic *vpic, uint32_t vgsi, uint32_t operation);
+
+/**
  * @brief Set vPIC IRQ line status.
  *
  * @param[in] vpic      Pointer to target VM's vpic table
@@ -155,7 +167,7 @@ void vpic_init(struct acrn_vm *vm);
  *
  * @return None
  */
-void vpic_set_irqline(struct acrn_vpic *vpic, uint32_t vgsi, uint32_t operation);
+void vpic_set_irqline_lock(struct acrn_vpic *vpic, uint32_t vgsi, uint32_t operation);
 
 /**
  * @brief Get pending virtual interrupts for vPIC.
