@@ -4,10 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <types.h>
-#include <errno.h>
+#include <dep.h>
 #include <multiboot.h>
-#include <x86/pgtable.h>
 #include "multiboot_priv.h"
 
 /**

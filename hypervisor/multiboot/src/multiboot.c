@@ -4,12 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <types.h>
-#include <errno.h>
-#include <x86/pgtable.h>
+#include <dep.h>
 #include <multiboot.h>
-#include <rtl.h>
-#include <logmsg.h>
 #include "multiboot_priv.h"
 
 struct multiboot_info {
@@ -66,6 +62,11 @@ struct multiboot_info {
 static struct acrn_multiboot_info acrn_mbi = { 0U };
 static int32_t mbi_status;
 
+static void *hpa2hva_early(uint64_t x)
+{
+	return (void *)x;
+}
+
 void init_multiboot_info(uint32_t eax, uint32_t ebx, char *sig)
 {
 	if (boot_from_multiboot1(eax, ebx)) {
@@ -93,9 +94,9 @@ void init_multiboot_info(uint32_t eax, uint32_t ebx, char *sig)
 int32_t sanitize_multiboot_info(uint32_t eax, uint32_t ebx)
 {
 	if ((acrn_mbi.mi_mmap_entries != 0U) && (acrn_mbi.mi_mmap_va != NULL)) {
-		if (acrn_mbi.mi_mmap_entries > E820_MAX_ENTRIES) {
+		if (acrn_mbi.mi_mmap_entries > MAX_MMAP_ENTRIES) {
 			pr_err("Too many E820 entries %d\n", acrn_mbi.mi_mmap_entries);
-			acrn_mbi.mi_mmap_entries = E820_MAX_ENTRIES;
+			acrn_mbi.mi_mmap_entries = MAX_MMAP_ENTRIES;
 		}
 		if (boot_from_multiboot1(eax, ebx)) {
 			uint32_t mmap_entry_size = sizeof(struct multiboot_mmap);

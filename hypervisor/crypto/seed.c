@@ -11,6 +11,7 @@
 #include <sprintf.h>
 #include <x86/guest/ept.h>
 #include <logmsg.h>
+#include <efi.h>
 #include <multiboot.h>
 #include <crypto_api.h>
 #include <x86/seed.h>

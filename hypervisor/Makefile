@@ -23,6 +23,8 @@ ifeq ($(TARGET_DIR),)
   override TARGET_DIR := $(realpath ../misc/vm_configs)
 endif
 
+MULTIBOOT_MOD = $(HV_MODDIR)/multiboot_mod.a
+
 LIB_MOD = $(HV_MODDIR)/lib_mod.a
 BOOT_MOD = $(HV_MODDIR)/boot_mod.a
 HW_MOD = $(HV_MODDIR)/hw_mod.a
@@ -163,6 +165,9 @@ INCLUDE_PATH += $(BOARD_INFO_DIR)
 INCLUDE_PATH += $(BOARD_CFG_DIR)
 INCLUDE_PATH += $(SCENARIO_CFG_DIR)
 
+# tmp, shall be removed after modularization task done for all
+INCLUDE_PATH += multiboot/include
+
 override INCLUDE_PATH := $(realpath $(INCLUDE_PATH))
 
 CC ?= gcc
@@ -171,10 +176,7 @@ AR ?= ar
 LD ?= ld
 OBJCOPY ?= objcopy
 
-export CC AS AR LD OBJCOPY
-export CFLAGS ASFLAGS ARFLAGS LDFLAGS ARCH_CFLAGS ARCH_ASFLAGS ARCH_ARFLAGS ARCH_LDFLAGS
-export HV_OBJDIR HV_MODDIR CONFIG_RELEASE INCLUDE_PATH
-export LIB_DEBUG LIB_RELEASE
+export
 
 # library componment
 LIB_C_SRCS += lib/string.c
@@ -204,10 +206,6 @@ endif
 # platform boot component
 BOOT_S_SRCS += arch/x86/boot/cpu_primary.S
 BOOT_S_SRCS += arch/x86/boot/trampoline.S
-BOOT_C_SRCS += boot/multiboot/multiboot.c
-ifeq ($(CONFIG_MULTIBOOT2),y)
-BOOT_C_SRCS += boot/multiboot/multiboot2.c
-endif
 BOOT_C_SRCS += boot/reloc.c
 BOOT_C_SRCS += arch/x86/ptcm.c
 
@@ -361,6 +359,8 @@ CFLAGS += -DHV_DEBUG -DPROFILING_ON -fno-omit-frame-pointer
 endif
 CFLAGS += -DCONFIG_LAST_LEVEL_EPT_AT_BOOT
 
+MODULES += $(MULTIBOOT_MOD)
+
 MODULES += $(LIB_MOD)
 MODULES += $(BOOT_MOD)
 MODULES += $(HW_MOD)
@@ -409,7 +409,13 @@ pre_build: $(HV_OBJDIR)/$(HV_CONFIG_H)
 .PHONY: header
 header: $(VERSION) $(HV_OBJDIR)/$(HV_CONFIG_H)
 
-.PHONY: lib-mod boot-mod hw-mod vp-base-mod vp-dm-mod vp-trusty-mod vp-hcall-mod sys-init-mod
+.PHONY: multiboot-mod lib-mod boot-mod hw-mod vp-base-mod vp-dm-mod vp-trusty-mod vp-hcall-mod sys-init-mod
+
+$(MULTIBOOT_MOD): $(HV_OBJDIR)/$(HV_CONFIG_H)
+	$(MAKE) -C multiboot
+
+multiboot-mod: $(MULTIBOOT_MOD)
+
 $(LIB_MOD): $(LIB_C_OBJS) $(LIB_S_OBJS)
 	$(AR) $(ARFLAGS) $(LIB_MOD) $(LIB_C_OBJS) $(LIB_S_OBJS)
 

@@ -35,6 +35,7 @@
 #include <acrn_common.h>
 #include <util.h>
 #include <x86/e820.h>
+#include <efi.h>
 #include <multiboot.h>
 
 static struct acpi_table_rsdp *acpi_rsdp;

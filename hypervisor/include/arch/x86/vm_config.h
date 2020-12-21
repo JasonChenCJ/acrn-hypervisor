@@ -9,6 +9,7 @@
 
 #include <types.h>
 #include <pci.h>
+#include <efi.h>
 #include <board_info.h>
 #include <multiboot.h>
 #include <acrn_common.h>

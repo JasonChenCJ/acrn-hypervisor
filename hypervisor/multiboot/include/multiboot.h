@@ -7,8 +7,6 @@
 #ifndef MULTIBOOT_H
 #define MULTIBOOT_H
 
-#include <vm_configurations.h>
-
 #ifdef CONFIG_MULTIBOOT2
 #include <multiboot2.h>
 #endif
@@ -30,17 +28,17 @@
 #define	MULTIBOOT_INFO_HAS_EFI_MMAP	0x00010000U
 #define	MULTIBOOT_INFO_HAS_EFI64	0x00020000U
 
+/* TODO: MAX_MMAP_ENTRIES shall be config by config tool, and same as E820_MAX_ENTRIES */
 #define MAX_MMAP_ENTRIES		32U
 #define MAX_BOOTARGS_SIZE		2048U
 /* The modules in multiboot are for kernel and ramdisk of pre-launched VMs and SOS VM */
-#define MAX_MODULE_NUM			(3U * PRE_VM_NUM + 2U * SOS_VM_NUM)
+/* TODO: MAX_MODULE_NUM shall be config by config tool */
+#define MAX_MODULE_NUM			8U
 
 /* The vACPI module size is fixed to 1MB */
 #define ACPI_MODULE_SIZE		MEM_1M
 
 #ifndef ASSEMBLER
-#include <x86/zeropage.h>
-
 struct multiboot_mmap {
 	uint32_t size;
 	uint64_t baseaddr;

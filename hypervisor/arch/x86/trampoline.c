@@ -5,6 +5,7 @@
  */
 
 #include <types.h>
+#include <x86/e820.h>
 #include <x86/mmu.h>
 #include <x86/per_cpu.h>
 #include <x86/trampoline.h>

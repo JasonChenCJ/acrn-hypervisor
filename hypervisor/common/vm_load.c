@@ -7,6 +7,7 @@
 #include <x86/guest/vm.h>
 #include <x86/guest/ept.h>
 #include <x86/mmu.h>
+#include <x86/zeropage.h>
 #include <multiboot.h>
 #include <errno.h>
 #include <sprintf.h>

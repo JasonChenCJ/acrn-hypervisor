@@ -9,6 +9,7 @@
 #include <x86/page.h>
 #include <x86/e820.h>
 #include <x86/mmu.h>
+#include <efi.h>
 #include <multiboot.h>
 #include <logmsg.h>
 #include <x86/guest/ept.h>
