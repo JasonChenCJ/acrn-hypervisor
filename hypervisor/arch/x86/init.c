@@ -157,9 +157,6 @@ static void init_pcpu_comm_post(void)
 		/* Initialize interrupts */
 		init_interrupt(BSP_CPU_ID);
 
-		/* Setup ioapic irqs */
-		ioapic_setup_irqs();
-
 		timer_init();
 		setup_notification();
 		setup_pi_notification();
