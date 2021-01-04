@@ -34,6 +34,11 @@
 #include <logmsg.h>
 #include <ptintr.h>
 #include <x86/guest/vm.h>
+#include <x86/guest/virq.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
+#include <irq.h>
 #include <x86/irq.h>
 #include <x86/guest/ept.h>
 #include <x86/ioapic.h>

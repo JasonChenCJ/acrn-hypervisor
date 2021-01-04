@@ -7,9 +7,12 @@
 #include <types.h>
 #include <x86/msr.h>
 #include <softirq.h>
-#include <x86/irq.h>
 #include <x86/apicreg.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
 #include <x86/cpu.h>
+#include <irq.h>
+#include <x86/irq.h>
 #include <trace.h>
 
 /* run in interrupt context */

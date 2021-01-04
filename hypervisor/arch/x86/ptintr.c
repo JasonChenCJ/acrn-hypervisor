@@ -13,6 +13,8 @@
 #include <x86/pgtable.h>
 #include <x86/ptintr.h>
 
+#define DBG_LEVEL_PTINTR		6U
+
 union irte_index {
 	uint16_t index;
 	struct {
@@ -152,7 +154,7 @@ static void build_physical_msi(struct ptintr *intr, struct msi_info *vmsi,
 		pmsi->addr.bits.rh = MSI_ADDR_RH;
 		pmsi->addr.bits.dest_mode = MSI_ADDR_DESTMODE_LOGICAL;
 	}
-	dev_dbg(DBG_LEVEL_IRQ, "MSI %s addr:data = 0x%lx:%x(V) -> 0x%lx:%x(P)",
+	dev_dbg(DBG_LEVEL_PTINTR, "MSI %s addr:data = 0x%lx:%x(V) -> 0x%lx:%x(P)",
 		(pmsi->addr.ir_bits.intr_format != 0U) ?
 		"Remappable Format" : "Compatibility Format",
 		vmsi->addr.full, vmsi->data.full,
@@ -239,7 +241,7 @@ static union ioapic_rte build_physical_rte(struct acrn_vm *vm, struct ptintr *in
 			rte.bits.dest_field = dest_mask;
 		}
 
-		dev_dbg(DBG_LEVEL_IRQ, "IOAPIC RTE %s = 0x%x:%x(V) -> 0x%x:%x(P)",
+		dev_dbg(DBG_LEVEL_PTINTR, "IOAPIC RTE %s = 0x%x:%x(V) -> 0x%x:%x(P)",
 			(rte.ir_bits.intr_format != 0U) ? "Remappable Format" : "Compatibility Format",
 			virt_rte.u.hi_32, virt_rte.u.lo_32,
 			rte.u.hi_32, rte.u.lo_32);
@@ -256,7 +258,7 @@ static union ioapic_rte build_physical_rte(struct acrn_vm *vm, struct ptintr *in
 			rte.bits.trigger_mode = IOAPIC_RTE_TRGRMODE_LEVEL;
 		}
 
-		dev_dbg(DBG_LEVEL_IRQ, "IOAPIC RTE %s = 0x%x:%x(P) -> 0x%x:%x(P)",
+		dev_dbg(DBG_LEVEL_PTINTR, "IOAPIC RTE %s = 0x%x:%x(P) -> 0x%x:%x(P)",
 			(rte.ir_bits.intr_format != 0U) ? "Remappable Format" : "Compatibility Format",
 			phys_rte.u.hi_32, phys_rte.u.lo_32,
 			rte.u.hi_32, rte.u.lo_32);
@@ -298,7 +300,7 @@ int32_t ptintr_add_intx_arch(struct acrn_vm *vm, union source_id *virt_sid)
 			intr->virt_sid = *virt_sid;
 			/* FIXME re-insert */
 			ret = -EACCES;
-			dev_dbg(DBG_LEVEL_IRQ,
+			dev_dbg(DBG_LEVEL_PTINTR,
 				"IOAPIC gsi=%hhu pirq=%u vgsi=%d switch from %s to %s for vm%d",
 				intr->phys_sid.intx_id.gsi,
 				ptirq_get_irq(intr->irq), intr->virt_sid.intx_id.gsi,
@@ -378,7 +380,7 @@ int32_t ptintr_remap_msix_arch(struct ptintr *intr, struct ptintr_remap_msix *ar
 
 	if (ret == 0) {
 		vbdf.value = intr->virt_sid.msi_id.bdf;
-		dev_dbg(DBG_LEVEL_IRQ, "PCI %x:%x.%x MSI VR[%d] 0x%x->0x%x assigned to vm%u",
+		dev_dbg(DBG_LEVEL_PTINTR, "PCI %x:%x.%x MSI VR[%d] 0x%x->0x%x assigned to vm%u",
 			vbdf.bits.b, vbdf.bits.d, vbdf.bits.f, intr->virt_sid.msi_id.entry_nr,
 			vmsi->data.bits.vector,
 			is_ptirq ? ptirq_vr : (uint32_t)vmsi->data.bits.vector,

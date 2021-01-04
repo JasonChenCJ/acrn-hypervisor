@@ -9,6 +9,7 @@
 #include <x86/guest/vm.h>
 #include <x86/ptirq.h>
 #include <softirq.h>
+#include <util.h>
 #include <irq.h>
 #include <logmsg.h>
 

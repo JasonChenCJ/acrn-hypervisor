@@ -7,6 +7,9 @@
 #include <types.h>
 #include <errno.h>
 #include <x86/vmx.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
 #include <irq.h>
 #include <x86/mmu.h>
 #include <x86/guest/vcpu.h>
@@ -18,6 +21,7 @@
 #include <x86/guest/ept.h>
 #include <x86/vtd.h>
 #include <x86/guest/vcpuid.h>
+#include <x86/guest/virq.h>
 #include <trace.h>
 #include <x86/rtcm.h>
 

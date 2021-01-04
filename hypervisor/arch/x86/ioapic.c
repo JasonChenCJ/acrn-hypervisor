@@ -8,11 +8,15 @@
 #include <errno.h>
 #include <x86/lib/spinlock.h>
 #include <x86/ioapic.h>
+#include <util.h>
+#include <irq.h>
 #include <x86/irq.h>
 #include <x86/mmu.h>
 #include <x86/pgtable.h>
 #include <acpi.h>
 #include <logmsg.h>
+
+#define DBG_LEVEL_IOAPIC		6U
 
 static union ioapic_rte saved_rte[CONFIG_MAX_IOAPIC_NUM][CONFIG_MAX_IOAPIC_LINES];
 
@@ -44,7 +48,7 @@ ioapic_nr_pins(void *ioapic_base)
 	uint32_t nr_pins;
 
 	version = ioapic_read_reg32(ioapic_base, IOAPIC_VER);
-	dev_dbg(DBG_LEVEL_IRQ, "IOAPIC version: %x", version);
+	dev_dbg(DBG_LEVEL_IOAPIC, "IOAPIC version: %x", version);
 
 	/* The 23:16 bits in the version register is the highest entry in the
 	 * I/O redirection table, which is 1 smaller than the number of

@@ -13,6 +13,8 @@
 #include <x86/cpuid.h>
 #include <x86/lapic.h>
 #include <x86/cpu_caps.h>
+#include <util.h>
+#include <irq.h>
 #include <x86/irq.h>
 #include <x86/mmu.h>
 #include <x86/vmx.h>

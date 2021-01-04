@@ -7,6 +7,8 @@
 #include <types.h>
 #include <x86/guest/vcpu.h>
 #include <x86/guest/vm.h>
+#include <x86/guest/virq.h>
+#include <irq.h>
 #include <x86/irq.h>
 #include <event.h>
 #include <x86/cpu_caps.h>

@@ -8,6 +8,10 @@
 #include <x86/guest/vm_reset.h>
 #include <x86/guest/vmcs.h>
 #include <x86/guest/vmexit.h>
+#include <x86/guest/virq.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
 #include <irq.h>
 #include <schedule.h>
 #include <profiling.h>

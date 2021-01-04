@@ -7,6 +7,10 @@
 
 #include <types.h>
 #include <errno.h>
+#include <util.h>
+#include <x86/cpu.h>
+#include <x86/lib/spinlock.h>
+#include <irq.h>
 #include <x86/irq.h>
 #include <x86/per_cpu.h>
 #include <x86/pgtable.h>

@@ -7,19 +7,20 @@
 #ifndef ARCH_IRQ_H
 #define ARCH_IRQ_H
 
-#include <acrn_common.h>
-#include <util.h>
-#include <irq.h>
-#include <x86/lib/spinlock.h>
-
 /**
  * @file arch/x86/irq.h
  *
- * @brief public APIs for virtual IRQ
+ * @brief public APIs for arch IRQ
  */
 
 #define NR_MAX_VECTOR		0xFFU
 #define VECTOR_INVALID		(NR_MAX_VECTOR + 1U)
+
+#define HYPERVISOR_CALLBACK_VHM_VECTOR	0xF3U
+
+#define TIMER_IRQ		(NR_IRQS - 1U)
+#define NOTIFY_VCPU_IRQ		(NR_IRQS - 2U)
+#define PMI_IRQ			(NR_IRQS - 3U)
 
 /* # of NR_STATIC_MAPPINGS_1 entries for timer, vcpu notify, and PMI */
 #define NR_STATIC_MAPPINGS_1	3U
@@ -65,28 +66,6 @@
  */
 #define POSTED_INTR_IRQ	(NR_IRQS - NR_STATIC_MAPPINGS_1 - CONFIG_MAX_VM_NUM)
 
-#define DEFAULT_DEST_MODE	IOAPIC_RTE_DESTMODE_LOGICAL
-#define DEFAULT_DELIVERY_MODE	IOAPIC_RTE_DELMODE_LOPRI
-
-#define INVALID_INTERRUPT_PIN	0xffffffffU
-
-struct acrn_vcpu;
-struct acrn_vm;
-
-/*
- * Definition of the stack frame layout
- */
-struct intr_excp_ctx {
-	struct acrn_gp_regs gp_regs;
-	uint64_t vector;
-	uint64_t error_code;
-	uint64_t rip;
-	uint64_t cs;
-	uint64_t rflags;
-	uint64_t rsp;
-	uint64_t ss;
-};
-
 struct x86_irq_data {
 	uint32_t vector;	/**< assigned vector */
 #ifdef PROFILING_ON
@@ -95,135 +74,6 @@ struct x86_irq_data {
 	uint64_t ctx_cs;
 #endif
 };
-
-typedef void (*smp_call_func_t)(void *data);
-struct smp_call_info_data {
-	smp_call_func_t func;
-	void *data;
-};
-
-void smp_call_function(uint64_t mask, smp_call_func_t func, void *data);
-bool is_notification_nmi(const struct acrn_vm *vm);
-
-void setup_notification(void);
-void setup_pi_notification(void);
-
-typedef void (*spurious_handler_t)(uint32_t vector);
-extern spurious_handler_t spurious_handler;
-
-/* RFLAGS */
-#define HV_ARCH_VCPU_RFLAGS_TF              (1UL<<8U)
-#define HV_ARCH_VCPU_RFLAGS_IF              (1UL<<9U)
-#define HV_ARCH_VCPU_RFLAGS_RF              (1UL<<16U)
-
-/* Interruptability State info */
-
-#define HV_ARCH_VCPU_BLOCKED_BY_NMI         (1UL<<3U)
-#define HV_ARCH_VCPU_BLOCKED_BY_MOVSS       (1UL<<1U)
-#define HV_ARCH_VCPU_BLOCKED_BY_STI         (1UL<<0U)
-
-/**
- * @brief virtual IRQ
- *
- * @addtogroup acrn_virq ACRN vIRQ
- * @{
- */
-
-/**
- * @brief Queue exception to guest.
- *
- * This exception may be injected immediately or later,
- * depends on the exeception class.
- *
- * @param[in] vcpu     Pointer to vCPU.
- * @param[in] vector_arg   Vector of the exeception.
- * @param[in] err_code_arg Error Code to be injected.
- *
- * @retval 0 on success
- * @retval -EINVAL on error that vector is invalid.
- *
- * @pre vcpu != NULL
- */
-int32_t vcpu_queue_exception(struct acrn_vcpu *vcpu, uint32_t vector_arg, uint32_t err_code_arg);
-
-/**
- * @brief Inject external interrupt to guest.
- *
- * @param[in] vcpu Pointer to vCPU.
- *
- * @return None
- *
- * @pre vcpu != NULL
- */
-void vcpu_inject_extint(struct acrn_vcpu *vcpu);
-
-/**
- * @brief Inject NMI to guest.
- *
- * @param[in] vcpu Pointer to vCPU.
- *
- * @return None
- *
- * @pre vcpu != NULL
- */
-void vcpu_inject_nmi(struct acrn_vcpu *vcpu);
-
-/**
- * @brief Inject general protection exeception(GP) to guest.
- *
- * @param[in] vcpu     Pointer to vCPU.
- * @param[in] err_code Error Code to be injected.
- *
- * @return None
- *
- * @pre vcpu != NULL
- */
-void vcpu_inject_gp(struct acrn_vcpu *vcpu, uint32_t err_code);
-
-/**
- * @brief Inject page fault exeception(PF) to guest.
- *
- * @param[in] vcpu     Pointer to vCPU.
- * @param[in] addr     Address that result in PF.
- * @param[in] err_code Error Code to be injected.
- *
- * @return None
- *
- * @pre vcpu != NULL
- */
-void vcpu_inject_pf(struct acrn_vcpu *vcpu, uint64_t addr, uint32_t err_code);
-
-/**
- * @brief Inject invalid opcode exeception(UD) to guest.
- *
- * @param[in] vcpu Pointer to vCPU.
- *
- * @return None
- *
- * @pre vcpu != NULL
- */
-void vcpu_inject_ud(struct acrn_vcpu *vcpu);
-
-/**
- * @brief Inject stack fault exeception(SS) to guest.
- *
- * @param[in] vcpu Pointer to vCPU.
- *
- * @return None
- *
- * @pre vcpu != NULL
- */
-void vcpu_inject_ss(struct acrn_vcpu *vcpu);
-void vcpu_make_request(struct acrn_vcpu *vcpu, uint16_t eventid);
-
-/*
- * @pre vcpu != NULL
- */
-int32_t exception_vmexit_handler(struct acrn_vcpu *vcpu);
-int32_t nmi_window_vmexit_handler(struct acrn_vcpu *vcpu);
-int32_t interrupt_window_vmexit_handler(struct acrn_vcpu *vcpu);
-int32_t external_interrupt_vmexit_handler(struct acrn_vcpu *vcpu);
-int32_t acrn_handle_pending_request(struct acrn_vcpu *vcpu);
 
 /**
  * @defgroup phys_int_ext_apis Physical Interrupt External Interfaces
@@ -273,17 +123,6 @@ void post_irq_arch(const struct irq_desc *desc);
  */
 void dispatch_interrupt(const struct intr_excp_ctx *ctx);
 
-void dispatch_exception(struct intr_excp_ctx *ctx);
-
-/**
- * @brief Handle NMI
- *
- * To handle an NMI
- *
- * @param ctx Pointer to interrupt exception context
- */
-void handle_nmi(struct intr_excp_ctx *ctx);
-
 bool irq_allocated_arch(struct irq_desc *desc);
 void init_irq_descs_arch(struct irq_desc descs[]);
 
@@ -306,5 +145,5 @@ void setup_irqs_arch(void);
 /**
  * @}
  */
-/* End of acrn_virq */
+/* End of acrn_x86_irq */
 #endif /* ARCH_IRQ_H */

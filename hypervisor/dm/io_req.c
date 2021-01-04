@@ -4,13 +4,19 @@
  */
 
 #include <x86/guest/vm.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
 #include <irq.h>
 #include <errno.h>
 #include <logmsg.h>
 
 #define DBG_LEVEL_IOREQ	6U
 
+#define HYPERVISOR_CALLBACK_VHM_VECTOR	0xF3U
+
 static uint32_t acrn_vhm_notification_vector = HYPERVISOR_CALLBACK_VHM_VECTOR;
+
 #define MMIO_DEFAULT_VALUE_SIZE_1	(0xFFUL)
 #define MMIO_DEFAULT_VALUE_SIZE_2	(0xFFFFUL)
 #define MMIO_DEFAULT_VALUE_SIZE_4	(0xFFFFFFFFUL)

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <x86/lib/bits.h>
 #include "shell_priv.h"
+#include <util.h>
 #include <irq.h>
 #include <console.h>
 #include <x86/per_cpu.h>

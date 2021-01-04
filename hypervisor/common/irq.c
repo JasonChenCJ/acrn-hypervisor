@@ -5,7 +5,9 @@
  */
 
 #include <types.h>
+#include <util.h>
 #include <errno.h>
+#include <acrn_common.h>
 #include <x86/lib/bits.h>
 #include <x86/lib/spinlock.h>
 #include <x86/per_cpu.h>

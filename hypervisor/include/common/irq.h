@@ -7,27 +7,14 @@
 #ifndef IRQ_H
 #define IRQ_H
 
-#include <acrn_common.h>
-#include <util.h>
-#include <x86/lib/spinlock.h>
-
 /**
  * @file common/irq.h
  *
  * @brief public APIs for virtual IRQ
  */
 
-#define DBG_LEVEL_PTIRQ		6U
-#define DBG_LEVEL_IRQ		6U
-
 #define NR_IRQS			256U
 #define IRQ_INVALID		0xffffffffU
-
-#define HYPERVISOR_CALLBACK_VHM_VECTOR	0xF3U
-
-#define TIMER_IRQ		(NR_IRQS - 1U)
-#define NOTIFY_VCPU_IRQ		(NR_IRQS - 2U)
-#define PMI_IRQ			(NR_IRQS - 3U)
 
 #define IRQ_ALLOC_BITMAP_SIZE	INT_DIV_ROUNDUP(NR_IRQS, 64U)
 
