@@ -8,11 +8,15 @@
 
 #include <types.h>
 #include <errno.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
 #include <x86/lib/bits.h>
-#include <irq.h>
+#include <x86/cpu.h>
+#include <interrupt/include/irq.h>
 #include <x86/mmu.h>
 #include <x86/guest/vcpu.h>
 #include <x86/guest/vm.h>
+#include <x86/guest/virq.h>
 #include <x86/vmx.h>
 #include <x86/vtd.h>
 #include <x86/guest/vmexit.h>

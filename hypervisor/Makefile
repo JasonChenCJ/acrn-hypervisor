@@ -24,6 +24,7 @@ ifeq ($(TARGET_DIR),)
 endif
 
 MULTIBOOT_MOD = $(HV_MODDIR)/multiboot_mod.a
+INTERRUPT_MOD = $(HV_MODDIR)/interrupt_mod.a
 
 LIB_MOD = $(HV_MODDIR)/lib_mod.a
 BOOT_MOD = $(HV_MODDIR)/boot_mod.a
@@ -225,8 +226,6 @@ HW_C_SRCS += arch/x86/page.c
 HW_C_SRCS += arch/x86/notify.c
 HW_C_SRCS += arch/x86/vtd.c
 HW_C_SRCS += arch/x86/gdt.c
-HW_C_SRCS += arch/x86/irq.c
-HW_C_SRCS += arch/x86/irq_init.c
 HW_C_SRCS += arch/x86/exception.c
 HW_C_SRCS += arch/x86/nmi.c
 HW_C_SRCS += arch/x86/tsc.c
@@ -242,10 +241,6 @@ HW_C_SRCS += arch/x86/trampoline.c
 HW_S_SRCS += arch/x86/sched.S
 HW_C_SRCS += arch/x86/rdt.c
 HW_C_SRCS += arch/x86/sgx.c
-ifeq ($(CONFIG_SOFTIRQ),y)
-HW_C_SRCS += common/softirq.c
-endif
-HW_C_SRCS += common/irq.c
 HW_C_SRCS += common/schedule.c
 HW_C_SRCS += common/event.c
 ifeq ($(CONFIG_SCHED_NOOP),y)
@@ -359,7 +354,10 @@ CFLAGS += -DHV_DEBUG -DPROFILING_ON -fno-omit-frame-pointer
 endif
 CFLAGS += -DCONFIG_LAST_LEVEL_EPT_AT_BOOT
 
+CONFIG_X86 = y
+
 MODULES += $(MULTIBOOT_MOD)
+MODULES += $(INTERRUPT_MOD)
 
 MODULES += $(LIB_MOD)
 MODULES += $(BOOT_MOD)
@@ -409,12 +407,17 @@ pre_build: $(HV_OBJDIR)/$(HV_CONFIG_H)
 .PHONY: header
 header: $(VERSION) $(HV_OBJDIR)/$(HV_CONFIG_H)
 
-.PHONY: multiboot-mod lib-mod boot-mod hw-mod vp-base-mod vp-dm-mod vp-trusty-mod vp-hcall-mod sys-init-mod
+.PHONY: multiboot-mod interrupt-mod lib-mod boot-mod hw-mod vp-base-mod vp-dm-mod vp-trusty-mod vp-hcall-mod sys-init-mod
 
 $(MULTIBOOT_MOD): $(HV_OBJDIR)/$(HV_CONFIG_H)
 	$(MAKE) -C multiboot
 
 multiboot-mod: $(MULTIBOOT_MOD)
+
+$(INTERRUPT_MOD): $(HV_OBJDIR)/$(HV_CONFIG_H)
+	$(MAKE) -C interrupt
+
+interrupt-mod: $(INTERRUPT_MOD)
 
 $(LIB_MOD): $(LIB_C_OBJS) $(LIB_S_OBJS)
 	$(AR) $(ARFLAGS) $(LIB_MOD) $(LIB_C_OBJS) $(LIB_S_OBJS)

@@ -4,7 +4,11 @@
  */
 
 #include <x86/guest/vm.h>
-#include <irq.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
+#include <interrupt/include/irq.h>
+#include <interrupt/sub/x86/include/irq.h>
 #include <errno.h>
 #include <logmsg.h>
 

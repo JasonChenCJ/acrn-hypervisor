@@ -31,6 +31,7 @@
 #include <types.h>
 #include <errno.h>
 #include <x86/guest/instr_emul.h>
+#include <x86/guest/virq.h>
 #include <x86/vmx.h>
 #include <x86/guest/vmcs.h>
 #include <x86/mmu.h>

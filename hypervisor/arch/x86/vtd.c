@@ -12,7 +12,10 @@
 #include <x86/lib/spinlock.h>
 #include <x86/page.h>
 #include <x86/pgtable.h>
-#include <x86/irq.h>
+#include <util.h>
+#include <x86/cpu.h>
+#include <interrupt/include/irq.h>
+#include <interrupt/sub/x86/include/irq.h>
 #include <x86/io.h>
 #include <x86/mmu.h>
 #include <x86/lapic.h>

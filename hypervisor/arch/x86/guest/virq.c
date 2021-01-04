@@ -6,8 +6,11 @@
 
 #include <types.h>
 #include <errno.h>
+#include <util.h>
 #include <x86/lib/bits.h>
-#include <irq.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
+#include <interrupt/include/irq.h>
 #include <x86/lapic.h>
 #include <x86/mmu.h>
 #include <x86/vmx.h>
@@ -30,6 +33,16 @@
 #define EXCEPTION_TRAP		1U
 #define EXCEPTION_ABORT		2U
 #define EXCEPTION_INTERRUPT	3U
+
+/* RFLAGS */
+#define HV_ARCH_VCPU_RFLAGS_IF              (1UL<<9U)
+#define HV_ARCH_VCPU_RFLAGS_RF              (1UL<<16U)
+
+/* Interruptability State info */
+
+#define HV_ARCH_VCPU_BLOCKED_BY_NMI         (1UL<<3U)
+#define HV_ARCH_VCPU_BLOCKED_BY_MOVSS       (1UL<<1U)
+#define HV_ARCH_VCPU_BLOCKED_BY_STI         (1UL<<0U)
 
 static const uint16_t exception_type[32] = {
 	[0] = VMX_INT_TYPE_HW_EXP,
@@ -344,7 +357,7 @@ int32_t external_interrupt_vmexit_handler(struct acrn_vcpu *vcpu)
 		ctx.rflags = vcpu_get_rflags(vcpu);
 		ctx.cs     = exec_vmread32(VMX_GUEST_CS_SEL);
 
-		dispatch_interrupt(&ctx);
+		dispatch_irq(&ctx);
 		vcpu_retain_rip(vcpu);
 
 		TRACE_2L(TRACE_VMEXIT_EXTERNAL_INTERRUPT, ctx.vector, 0UL);

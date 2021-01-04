@@ -6,7 +6,7 @@
 
 #include <types.h>
 #include <errno.h>
-#include <softirq.h>
+#include <interrupt/sub/softirq/include/softirq.h>
 #include <trace.h>
 #include <cycles.h>
 #include <hw_timer.h>

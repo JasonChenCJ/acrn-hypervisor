@@ -7,8 +7,11 @@
 #include <types.h>
 #include <rtl.h>
 #include <errno.h>
+#include <util.h>
 #include <x86/per_cpu.h>
-#include <irq.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
+#include <interrupt/include/irq.h>
 #include <boot.h>
 #include <multiboot.h>
 #include <x86/pgtable.h>

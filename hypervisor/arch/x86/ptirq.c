@@ -6,8 +6,12 @@
 
 #include <logmsg.h>
 #include <x86/guest/vm.h>
-#include <x86/irq.h>
+#include <util.h>
+#include <interrupt/include/irq.h>
+#include <interrupt/sub/x86/include/irq.h>
 #include <x86/ptirq.h>
+
+#define DBG_LEVEL_PTIRQ		6U
 
 static void ptirq_handle_intx(const struct ptirq *irq)
 {

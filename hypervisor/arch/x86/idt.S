@@ -352,7 +352,7 @@ nmi_save_frame:
 external_interrupt_save_frame:
     save_frame
 
-    call   dispatch_interrupt
+    call   dispatch_irq
 
     /*
      * We disable softirq path from interrupt IRET, since right now all IRQ

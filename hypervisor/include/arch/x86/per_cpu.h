@@ -9,7 +9,12 @@
 
 #include <types.h>
 #include <sbuf.h>
-#include <x86/irq.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
+#include <interrupt/include/irq.h>
+#include <interrupt/sub/x86/include/irq.h>
+#include <x86/notify.h>
 #include <x86/page.h>
 #include <timer.h>
 #include <profiling.h>

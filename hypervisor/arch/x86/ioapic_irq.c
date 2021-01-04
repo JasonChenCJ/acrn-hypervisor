@@ -8,10 +8,18 @@
 #include <errno.h>
 #include <x86/lib/spinlock.h>
 #include <x86/ioapic.h>
-#include <x86/irq.h>
+#include <util.h>
+#include <interrupt/include/irq.h>
+#include <interrupt/sub/x86/include/irq.h>
 #include <logmsg.h>
 
+#define DBG_LEVEL_IOAPIC		6U
+
 #define NR_MAX_GSI		(CONFIG_MAX_IOAPIC_NUM * CONFIG_MAX_IOAPIC_LINES)
+
+#define DEFAULT_DEST_MODE	IOAPIC_RTE_DESTMODE_LOGICAL
+#define DEFAULT_DELIVERY_MODE	IOAPIC_RTE_DELMODE_LOPRI
+
 
 static struct gsi_table gsi_table_data[NR_MAX_GSI];
 static uint32_t ioapic_max_nr_gsi;
@@ -150,7 +158,7 @@ static void ioapic_set_routing(uint32_t gsi, uint32_t vr)
 		set_irq_trigger_mode(gsi, false);
 	}
 
-	dev_dbg(DBG_LEVEL_IRQ, "GSI: irq:%d pin:%hhu rte:%lx",
+	dev_dbg(DBG_LEVEL_IOAPIC, "GSI: irq:%d pin:%hhu rte:%lx",
 		gsi, gsi_table_data[gsi].ioapic_info.pin,
 		rte.full);
 }
@@ -183,7 +191,7 @@ void ioapic_set_rte(uint32_t irq, union ioapic_rte rte)
 		set_irq_trigger_mode(irq, false);
 	}
 
-	dev_dbg(DBG_LEVEL_IRQ, "GSI: irq:%d pin:%hhu rte:%lx",
+	dev_dbg(DBG_LEVEL_IOAPIC, "GSI: irq:%d pin:%hhu rte:%lx",
 		irq, gsi_table_data[irq].ioapic_info.pin,
 		rte.full);
 }
@@ -246,10 +254,10 @@ ioapic_irq_gsi_mask_unmask(uint32_t irq, bool mask)
 			rte.bits.intr_mask = IOAPIC_RTE_MASK_CLR;
 		}
 		ioapic_set_rte_entry(addr, pin, rte);
-		dev_dbg(DBG_LEVEL_PTIRQ, "update: irq:%d pin:%hhu rte:%lx",
+		dev_dbg(DBG_LEVEL_IOAPIC, "update: irq:%d pin:%hhu rte:%lx",
 			irq, pin, rte.full);
 	} else {
-		dev_dbg(DBG_LEVEL_PTIRQ, "NULL Address returned from gsi_table_data");
+		dev_dbg(DBG_LEVEL_IOAPIC, "NULL Address returned from gsi_table_data");
 	}
 }
 

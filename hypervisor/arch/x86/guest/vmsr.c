@@ -15,6 +15,7 @@
 #include <x86/sgx.h>
 #include <x86/guest/guest_pm.h>
 #include <x86/guest/ucode.h>
+#include <x86/guest/virq.h>
 #include <x86/rdt.h>
 #include <trace.h>
 #include <logmsg.h>

@@ -40,6 +40,9 @@
 #include <types.h>
 #include <acrn_common.h>
 
+/* TODO: remove from cpu.h */
+#define INVALID_INTERRUPT_PIN	0xffffffffU
+
 /* Define CPU stack alignment */
 #define CPU_STACK_ALIGN         16UL
 
@@ -412,6 +415,32 @@ struct cpu_context {
 	struct run_context run_ctx;
 	struct ext_context ext_ctx;
 };
+
+/*
+ * Definition of the interrupt stack frame layout
+ */
+struct intr_excp_ctx {
+	struct acrn_gp_regs gp_regs;
+	uint64_t vector;
+	uint64_t error_code;
+	uint64_t rip;
+	uint64_t cs;
+	uint64_t rflags;
+	uint64_t rsp;
+	uint64_t ss;
+};
+
+void dispatch_exception(struct intr_excp_ctx *ctx);
+
+/**
+ * @brief Handle NMI
+ *
+ * To handle an NMI
+ *
+ * @param ctx Pointer to interrupt exception context
+ */
+
+void handle_nmi(struct intr_excp_ctx *ctx);
 
 /* Function prototypes */
 void cpu_do_idle(void);

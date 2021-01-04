@@ -9,6 +9,7 @@
 #include <x86/lib/spinlock.h>
 #include <x86/guest/vcpu.h>
 #include <x86/guest/vm.h>
+#include <x86/guest/virq.h>
 #include <acrn_hv_defs.h>
 #include <hypercall.h>
 #include <trace.h>

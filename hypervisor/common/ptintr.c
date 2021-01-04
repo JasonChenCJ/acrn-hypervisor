@@ -7,10 +7,14 @@
 #include <hash.h>
 #include <errno.h>
 #include <logmsg.h>
-#include <irq.h>
+#include <util.h>
+#include <x86/lib/spinlock.h>
+#include <interrupt/include/irq.h>
 #include <x86/guest/vm.h>
 #include <x86/ptirq.h>
 #include <x86/ptintr.h>
+
+#define DBG_LEVEL_PTINTR		6U
 
 #define PTINTR_BITMAP_ARRAY_SIZE	INT_DIV_ROUNDUP(CONFIG_MAX_PT_IRQ_ENTRIES, 64U)
 #define PTINTR_BITMAP_SIZE		(PTINTR_BITMAP_ARRAY_SIZE << 6U)
@@ -136,7 +140,7 @@ static struct ptintr *add_msix_entry(struct acrn_vm *vm,
 		}
 
 		if (intr != NULL) {
-			dev_dbg(DBG_LEVEL_IRQ,
+			dev_dbg(DBG_LEVEL_PTINTR,
 				"VM%u MSIX add vector mapping vbdf%x:pbdf%x idx=%d",
 				vm->vm_id, virt_bdf, phys_bdf, entry_nr);
 		}
@@ -219,7 +223,7 @@ static struct ptintr *add_intx_entry(struct acrn_vm *vm, uint32_t virt_gsi,
 	 * intr is either created or transferred from SOS VM to Post-launched VM
 	 */
 	if (intr != NULL) {
-		dev_dbg(DBG_LEVEL_IRQ, "VM%u INTX add pin mapping vgsi%d:pgsi%d",
+		dev_dbg(DBG_LEVEL_PTINTR, "VM%u INTX add pin mapping vgsi%d:pgsi%d",
 			intr->vm->vm_id, virt_gsi, phys_gsi);
 	}
 
@@ -353,7 +357,7 @@ int32_t ptintr_remap(struct acrn_vm *vm, struct ptintr_remap_args *args)
 
 static void remove_and_unmap_msix_entry(struct ptintr *intr)
 {
-	dev_dbg(DBG_LEVEL_IRQ,
+	dev_dbg(DBG_LEVEL_PTINTR,
 		"VM%u MSIX remove vector mapping vbdf-pbdf:0x%x-0x%x idx=%d",
 		intr->vm->vm_id, intr->virt_sid.msi_id.bdf,
 		intr->phys_sid.msi_id.bdf, intr->phys_sid.msi_id.entry_nr);
@@ -379,7 +383,7 @@ static void remove_msix_remapping(const struct acrn_vm *vm, struct ptintr_rmv_ms
 
 static void remove_and_unmap_intx_entry(struct ptintr *intr)
 {
-	dev_dbg(DBG_LEVEL_IRQ,
+	dev_dbg(DBG_LEVEL_PTINTR,
 		"remove intx intr: vgsi_ctlr=%u vgsi=%u pgsi=%u from VM%u",
 		intr->virt_sid.intx_id.ctlr, intr->virt_sid.intx_id.gsi,
 		intr->phys_sid.intx_id.gsi, intr->vm->vm_id);

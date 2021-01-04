@@ -8,8 +8,9 @@
 #include <x86/per_cpu.h>
 #include <x86/guest/vm.h>
 #include <x86/ptirq.h>
-#include <softirq.h>
-#include <irq.h>
+#include <interrupt/sub/softirq/include/softirq.h>
+#include <util.h>
+#include <interrupt/include/irq.h>
 #include <logmsg.h>
 
 #define PTIRQ_BITMAP_ARRAY_SIZE	INT_DIV_ROUNDUP(CONFIG_MAX_PT_IRQ_ENTRIES, 64U)

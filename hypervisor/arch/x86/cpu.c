@@ -14,8 +14,10 @@
 #include <x86/cpuid.h>
 #include <x86/lapic.h>
 #include <x86/cpu_caps.h>
-#include <x86/irq.h>
 #include <x86/mmu.h>
+#include <util.h>
+#include <interrupt/include/irq.h>
+#include <interrupt/sub/x86/include/irq.h>
 #include <x86/vmx.h>
 #include <x86/msr.h>
 #include <x86/page.h>

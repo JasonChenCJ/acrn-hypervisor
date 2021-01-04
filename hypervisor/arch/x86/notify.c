@@ -7,11 +7,15 @@
 #include <types.h>
 #include <errno.h>
 #include <x86/lib/bits.h>
-#include <irq.h>
+#include <x86/lib/spinlock.h>
+#include <util.h>
+#include <interrupt/include/irq.h>
 #include <x86/cpu.h>
 #include <x86/per_cpu.h>
 #include <x86/lapic.h>
 #include <x86/guest/vm.h>
+
+#define DBG_LEVEL_NOTIFY		6U
 
 static uint32_t notification_irq = IRQ_INVALID;
 
@@ -93,7 +97,7 @@ void setup_notification(void)
 		pr_err("Failed to setup notification");
 	}
 
-	dev_dbg(DBG_LEVEL_PTIRQ, "NOTIFY: irq[%d] setup vector %x",
+	dev_dbg(DBG_LEVEL_NOTIFY, "NOTIFY: irq[%d] setup vector %x",
 		notification_irq, irq_to_vector(notification_irq));
 }
 
