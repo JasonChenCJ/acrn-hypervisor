@@ -30,6 +30,7 @@
 #include <rtl.h>
 #include "acpi.h"
 #include <x86/pgtable.h>
+#include <x86/apicreg.h>
 #include <x86/ioapic.h>
 #include <logmsg.h>
 #include <acrn_common.h>

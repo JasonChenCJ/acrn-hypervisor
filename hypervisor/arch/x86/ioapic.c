@@ -7,7 +7,11 @@
 #include <types.h>
 #include <errno.h>
 #include <x86/lib/spinlock.h>
+#include <x86/cpu.h>
+#include <x86/page.h>
+#include <x86/apicreg.h>
 #include <x86/ioapic.h>
+#include <x86/io.h>
 #include <util.h>
 #include <irq.h>
 #include <x86/irq.h>
@@ -22,7 +26,6 @@ static union ioapic_rte saved_rte[CONFIG_MAX_IOAPIC_NUM][CONFIG_MAX_IOAPIC_LINES
 
 struct ioapic_info ioapic_array[CONFIG_MAX_IOAPIC_NUM];
 
-uint8_t ioapic_num;
 spinlock_t ioapic_lock;
 
 #define NR_MAX_GSI		(CONFIG_MAX_IOAPIC_NUM * CONFIG_MAX_IOAPIC_LINES)
@@ -30,8 +33,27 @@ spinlock_t ioapic_lock;
 #define DEFAULT_DEST_MODE	IOAPIC_RTE_DESTMODE_LOGICAL
 #define DEFAULT_DELIVERY_MODE	IOAPIC_RTE_DELMODE_LOPRI
 
+/*
+ * is_valid is by default false when all the
+ * static variables, part of .bss, are initialized to 0s
+ * It is set to true, if the corresponding
+ * gsi falls in ranges identified by IOAPIC data
+ * in ACPI MADT in ioapic_setup_irqs.
+ */
+
+struct gsi_table {
+	bool is_valid;
+	struct {
+		uint8_t acpi_id;
+		uint8_t index;
+		uint32_t pin;
+		void  *base_addr;
+	} ioapic_info;
+};
+
 static struct gsi_table gsi_table_data[NR_MAX_GSI];
 static uint32_t ioapic_max_nr_gsi;
+static uint8_t ioapic_num;
 
 static const uint32_t legacy_irq_trigger_mode[NR_LEGACY_PIN] = {
 	IOAPIC_RTE_TRGRMODE_EDGE, /* IRQ2*/
@@ -97,6 +119,44 @@ void *gsi_to_ioapic_base(uint32_t gsi)
 uint32_t get_max_nr_gsi(void)
 {
 	return ioapic_max_nr_gsi;
+}
+
+static uint32_t ioapic_read_reg32(void *ioapic_base, const uint32_t offset)
+{
+	uint32_t v;
+	uint64_t rflags;
+
+	spinlock_irqsave_obtain(&ioapic_lock, &rflags);
+
+	/* Write IOREGSEL */
+	mmio_write32(offset, ioapic_base + IOAPIC_REGSEL);
+	/* Read  IOWIN */
+	v = mmio_read32(ioapic_base + IOAPIC_WINDOW);
+
+	spinlock_irqrestore_release(&ioapic_lock, rflags);
+	return v;
+}
+
+static void ioapic_write_reg32(void *ioapic_base, const uint32_t offset, const uint32_t value)
+{
+	uint64_t rflags;
+
+	spinlock_irqsave_obtain(&ioapic_lock, &rflags);
+
+	/* Write IOREGSEL */
+	mmio_write32(offset, ioapic_base + IOAPIC_REGSEL);
+	/* Write IOWIN */
+	mmio_write32(value, ioapic_base + IOAPIC_WINDOW);
+
+	spinlock_irqrestore_release(&ioapic_lock, rflags);
+}
+
+static void ioapic_set_rte_entry(void *ioapic_base,
+		uint32_t pin, union ioapic_rte rte)
+{
+	uint32_t rte_addr = (pin * 2U) + 0x10U;
+	ioapic_write_reg32(ioapic_base, rte_addr, rte.u.lo_32);
+	ioapic_write_reg32(ioapic_base, rte_addr + 1U, rte.u.hi_32);
 }
 
 static inline union ioapic_rte
@@ -289,6 +349,14 @@ uint8_t ioapic_irq_to_ioapic_id(uint32_t irq)
 	return gsi_table_data[irq].ioapic_info.acpi_id;
 }
 
+static void *map_ioapic(uint64_t ioapic_paddr)
+{
+	/* At some point we may need to translate this paddr to a vaddr.
+	 * 1:1 mapping for now.
+	 */
+	return hpa2hva(ioapic_paddr);
+}
+
 void ioapic_setup_irqs(void)
 {
 	uint8_t ioapic_id;
@@ -373,14 +441,6 @@ ioapic_nr_pins(void *ioapic_base)
 
 
 	return nr_pins;
-}
-
-void *map_ioapic(uint64_t ioapic_paddr)
-{
-	/* At some point we may need to translate this paddr to a vaddr.
-	 * 1:1 mapping for now.
-	 */
-	return hpa2hva(ioapic_paddr);
 }
 
 void ioapic_get_rte_entry(void *ioapic_base, uint32_t pin, union ioapic_rte *rte)

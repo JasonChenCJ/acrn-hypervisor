@@ -11,6 +11,7 @@
 #include <x86/lib/spinlock.h>
 #include <x86/cpu.h>
 #include <irq.h>
+#include <x86/page.h>
 #include <x86/lapic.h>
 #include <x86/mmu.h>
 #include <x86/vmx.h>

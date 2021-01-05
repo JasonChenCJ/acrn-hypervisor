@@ -7,6 +7,7 @@
 #include <types.h>
 #include <x86/msr.h>
 #include <softirq.h>
+#include <x86/page.h>
 #include <x86/apicreg.h>
 #include <util.h>
 #include <x86/lib/spinlock.h>
