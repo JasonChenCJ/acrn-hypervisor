@@ -22,8 +22,10 @@
 #include <udelay.h>
 #include <cycles.h>
 
-struct cpu_context cpu_ctx;
+extern void asm_enter_s3(const struct pm_s_state_data *sstate_data, uint32_t pm1a_cnt_val, uint32_t pm1b_cnt_val);
+extern void restore_s3_context(void);
 
+struct cpu_context cpu_ctx;
 static struct cpu_state_info cpu_pm_state_info;
 
 /* The table includes cpu px info of Intel A3960 SoC */
@@ -161,7 +163,7 @@ static int32_t get_state_tbl_idx(const char *cpuname)
 	return ret;
 }
 
-struct cpu_state_info *get_cpu_pm_state_info(void)
+struct cpu_state_info *get_pcpu_pm_state_info(void)
 {
 	return &cpu_pm_state_info;
 }
@@ -340,17 +342,23 @@ void do_acpi_sx(const struct pm_s_state_data *sstate_data, uint32_t pm1a_cnt_val
 	} while ((s1 & (1U << BIT_WAK_STS)) == 0U);
 }
 
-static uint32_t system_pm1a_cnt_val, system_pm1b_cnt_val;
-void save_s5_reg_val(uint32_t pm1a_cnt_val, uint32_t pm1b_cnt_val)
+static uint32_t host_pm1a_cnt_val, host_pm1b_cnt_val;
+
+static void init_host_shutdown_regval(void)
 {
-	system_pm1a_cnt_val = pm1a_cnt_val;
-	system_pm1b_cnt_val = pm1b_cnt_val;
+	host_pm1a_cnt_val = (host_pm_s_state.s5_pkg.val_pm1a << BIT_SLP_TYPx) | (1U << BIT_SLP_EN);
+	host_pm1b_cnt_val = (host_pm_s_state.s5_pkg.val_pm1b << BIT_SLP_TYPx) | (1U << BIT_SLP_EN);
 }
 
-void shutdown_system(void)
+void overwrite_host_shutdown_regval(uint32_t pm1a_cnt_val, uint32_t pm1b_cnt_val)
 {
-	struct pm_s_state_data *sx_data = get_host_sstate_data();
-	do_acpi_sx(sx_data, system_pm1a_cnt_val, system_pm1b_cnt_val);
+	host_pm1a_cnt_val = pm1a_cnt_val;
+	host_pm1b_cnt_val = pm1b_cnt_val;
+}
+
+void shutdown_host(void)
+{
+	do_acpi_sx(&host_pm_s_state, host_pm1a_cnt_val, host_pm1b_cnt_val);
 }
 
 static void suspend_tsc(__unused void *data)
@@ -363,7 +371,7 @@ static void resume_tsc(__unused void *data)
 	msr_write(MSR_IA32_TIME_STAMP_COUNTER, per_cpu(tsc_suspend, get_pcpu_id()));
 }
 
-void host_enter_s3(const struct pm_s_state_data *sstate_data, uint32_t pm1a_cnt_val, uint32_t pm1b_cnt_val)
+void suspend_host(const struct pm_s_state_data *sstate_data, uint32_t pm1a_cnt_val, uint32_t pm1b_cnt_val)
 {
 	uint64_t pmain_entry_saved;
 
@@ -465,4 +473,6 @@ void reset_host(void)
 void init_pm(void)
 {
 	load_pcpu_state_data();
+
+	init_host_shutdown_regval();
 }

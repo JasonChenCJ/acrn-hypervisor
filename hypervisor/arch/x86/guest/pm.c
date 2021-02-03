@@ -54,7 +54,7 @@ int32_t validate_pstate(const struct acrn_vm *vm, uint64_t perf_ctl)
 static void vm_setup_cpu_px(struct acrn_vm *vm)
 {
 	uint32_t px_data_size;
-	struct cpu_state_info *pm_state_info = get_cpu_pm_state_info();
+	struct cpu_state_info *pm_state_info = get_pcpu_pm_state_info();
 
 	vm->pm.px_cnt = 0U;
 	(void)memset(vm->pm.px_data, 0U, MAX_PSTATE * sizeof(struct cpu_px_data));
@@ -71,7 +71,7 @@ static void vm_setup_cpu_px(struct acrn_vm *vm)
 static void vm_setup_cpu_cx(struct acrn_vm *vm)
 {
 	uint32_t cx_data_size;
-	struct cpu_state_info *pm_state_info = get_cpu_pm_state_info();
+	struct cpu_state_info *pm_state_info = get_pcpu_pm_state_info();
 
 	vm->pm.cx_cnt = 0U;
 	(void)memset(vm->pm.cx_data, 0U, MAX_CSTATE * sizeof(struct cpu_cx_data));
@@ -162,7 +162,7 @@ static inline void enter_s5(struct acrn_vcpu *vcpu, uint32_t pm1a_cnt_val, uint3
 	 * down the system.
 	 */
 	if (is_sos_vm(vm)) {
-		save_s5_reg_val(pm1a_cnt_val, pm1b_cnt_val);
+		overwrite_host_shutdown_regval(pm1a_cnt_val, pm1b_cnt_val);
 	}
 	pause_vm(vm);
 	put_vm_lock(vm);
@@ -184,7 +184,7 @@ static inline void enter_s3(struct acrn_vm *vm, uint32_t pm1a_cnt_val, uint32_t 
 	clac();
 
 	pause_vm(vm);	/* pause sos_vm before suspend system */
-	host_enter_s3(vm->pm.sx_state_data, pm1a_cnt_val, pm1b_cnt_val);
+	suspend_host(vm->pm.sx_state_data, pm1a_cnt_val, pm1b_cnt_val);
 	resume_vm_from_s3(vm, guest_wakeup_vec32);	/* jump back to vm */
 	put_vm_lock(vm);
 }
@@ -378,17 +378,6 @@ static void register_prelaunched_vm_sleep_handler(struct acrn_vm *vm)
 
 void init_guest_pm(struct acrn_vm *vm)
 {
-	struct pm_s_state_data *sx_data = get_host_sstate_data();
-
-	/*
-	 * In enter_s5(), it will call save_s5_reg_val() to initialize system_pm1a_cnt_val/system_pm1b_cnt_val when the
-	 * vm is SOS.
-	 * If there is no SOS, save_s5_reg_val() will not be called and these 2 variables will not be initialized properly
-	 * so shutdown_system() will fail, explicitly init here to avoid this
-	 */
-	save_s5_reg_val((sx_data->s5_pkg.val_pm1a << BIT_SLP_TYPx) | (1U << BIT_SLP_EN),
-		(sx_data->s5_pkg.val_pm1b << BIT_SLP_TYPx) | (1U << BIT_SLP_EN));
-
 	vm_setup_cpu_state(vm);
 
 	if (is_sos_vm(vm)) {

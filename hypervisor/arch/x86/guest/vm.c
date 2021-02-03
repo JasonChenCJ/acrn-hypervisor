@@ -756,7 +756,7 @@ int32_t shutdown_vm(struct acrn_vm *vm)
 
 	if (is_ready_for_system_shutdown()) {
 		/* If no any guest running, shutdown system */
-		shutdown_system();
+		shutdown_host();
 	}
 
 	/* Return status to caller */
