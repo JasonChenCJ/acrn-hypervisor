@@ -33,7 +33,7 @@
 #include <x86/apicreg.h>
 #include <x86/ioapic.h>
 #include <logmsg.h>
-#include <x86/host_pm.h>
+#include <x86/pm.h>
 #include <pci.h>
 #include <acrn_common.h>
 #include <x86/rtcm.h>

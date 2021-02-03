@@ -5,7 +5,7 @@
  */
 
 #include <types.h>
-#include <x86/host_pm.h>
+#include <x86/pm.h>
 #include <x86/guest/vm.h>
 #include <x86/io.h>
 #include <logmsg.h>

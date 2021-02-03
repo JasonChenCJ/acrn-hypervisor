@@ -22,7 +22,7 @@
 #include <version.h>
 #include <shell.h>
 #include <x86/guest/vmcs.h>
-#include <x86/host_pm.h>
+#include <x86/pm.h>
 
 #define TEMP_STR_SIZE		60U
 #define MAX_STR_SIZE		256U

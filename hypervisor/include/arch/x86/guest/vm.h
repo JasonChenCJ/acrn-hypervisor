@@ -23,6 +23,7 @@
 #include <x86/guest/trusty.h>
 #include <x86/guest/vcpuid.h>
 #include <vpci.h>
+#include <x86/pm.h>
 #include <x86/cpu_caps.h>
 #include <x86/e820.h>
 #include <x86/vm_config.h>

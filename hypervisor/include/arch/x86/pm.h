@@ -8,6 +8,13 @@
 
 #include <acrn_common.h>
 
+#define MAX_PSTATE	20U	/* max num of supported Px count */
+#define MAX_CSTATE	8U	/* max num of supported Cx count */
+/* We support MAX_CSTATE num of Cx, means have (MAX_CSTATE - 1) Cx entries,
+ * i.e. supported Cx entry index range from 1 to MAX_CX_ENTRY.
+ */
+#define MAX_CX_ENTRY	(MAX_CSTATE - 1U)
+
 #define	BIT_SLP_TYPx	10U
 #define	BIT_SLP_EN	13U
 #define	BIT_WAK_STS	15U
