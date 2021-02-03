@@ -16,6 +16,7 @@
 #include <vpci.h>
 #include <ivshmem.h>
 #include <x86/init.h>
+#include <x86/pm.h>
 #include <x86/cpu_caps.h>
 #include <x86/per_cpu.h>
 #include <x86/lapic.h>
@@ -294,7 +295,7 @@ void init_primary_pcpu(void)
 		panic("hardware not support!");
 	}
 
-	load_pcpu_state_data();
+	init_pm();
 
 	/* Initialize the hypervisor paging */
 	init_e820();

@@ -189,7 +189,7 @@ static void load_cpu_state_info(const struct cpu_state_info *state_info)
 	}
 }
 
-void load_pcpu_state_data(void)
+static void load_pcpu_state_data(void)
 {
 	int32_t tbl_idx;
 	const struct cpu_state_info *state_info = NULL;
@@ -460,4 +460,9 @@ void reset_host(void)
 	while (1) {
 		asm_pause();
 	}
+}
+
+void init_pm(void)
+{
+	load_pcpu_state_data();
 }
