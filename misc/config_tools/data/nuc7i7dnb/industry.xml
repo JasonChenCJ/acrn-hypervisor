@@ -126,8 +126,8 @@
     </epc_section>
     <legacy_vuart id="0">
         <type>VUART_LEGACY_PIO</type>
-        <base>COM1_BASE</base>
-        <irq>COM1_IRQ</irq>
+        <base>COM2_BASE</base>
+        <irq>COM2_IRQ</irq>
     </legacy_vuart>
     <legacy_vuart id="1">
         <type>VUART_LEGACY_PIO</type>
